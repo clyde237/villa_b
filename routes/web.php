@@ -7,6 +7,15 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\HousekeepingController;
 
+// ===== AUTH ROUTES (Breeze) =====
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+// Login
+Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
+Route::post('/login', [AuthenticatedSessionController::class, 'store']);
+
+// Logout
+Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
+
 // Page d'accueil → redirige vers le dashboard si connecté
 Route::get('/', function () {
     return redirect()->route('dashboard');
