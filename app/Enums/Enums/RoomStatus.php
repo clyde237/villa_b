@@ -57,4 +57,30 @@ enum RoomStatus: string
             self::OUT_OF_ORDER => 'bg-gray-100 text-gray-800',
         };
     }
+
+    /**
+     * Transitions autorisées depuis ce statut
+     * Empêche par exemple de passer directement de 'available' à 'occupied'
+     * sans passer par le check-in
+     */
+    public function allowedTransitions(): array
+    {        return match($this) {
+            self::AVAILABLE => [self::OCCUPIED, self::MAINTENANCE, self::OUT_OF_ORDER],
+            self::OCCUPIED => [self::DIRTY],
+            self::DIRTY => [self::CLEANING],
+            self::CLEANING => [self::CLEAN],
+            self::CLEAN => [self::INSPECTED],
+            self::INSPECTED => [self::AVAILABLE],
+            self::MAINTENANCE => [self::AVAILABLE, self::OUT_OF_ORDER],
+            self::OUT_OF_ORDER => [self::AVAILABLE],
+        };
+    }
+
+    /**
+     * Vérifie si la transition vers un nouveau statut est autorisée
+     */
+    public function canTransitionTo(self $newStatus): bool
+    {
+        return in_array($newStatus, $this->allowedTransitions());
+    }
 }
