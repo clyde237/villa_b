@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * Room : Chambre physique de l'hôtel
@@ -71,17 +72,17 @@ class Room extends Model
         return $query->whereDoesntHave('bookings', function ($q) use ($checkIn, $checkOut) {
             $q->where(function ($sq) use ($checkIn, $checkOut) {
                 $sq->whereBetween('check_in', [$checkIn, $checkOut])
-                   ->orWhereBetween('check_out', [$checkIn, $checkOut])
-                   ->orWhere(function ($ssq) use ($checkIn, $checkOut) {
-                       $ssq->where('check_in', '<=', $checkIn)
-                           ->where('check_out', '>=', $checkOut);
-                   });
+                    ->orWhereBetween('check_out', [$checkIn, $checkOut])
+                    ->orWhere(function ($ssq) use ($checkIn, $checkOut) {
+                        $ssq->where('check_in', '<=', $checkIn)
+                            ->where('check_out', '>=', $checkOut);
+                    });
             })->whereNotIn('status', ['cancelled', 'no_show']);
         })->where('status', RoomStatus::AVAILABLE)
-          ->where('is_active', true);
+            ->where('is_active', true);
     }
 
-/**
+    /**
      * Met à jour le statut avec historique (pattern Observer)
      * 
      * @param RoomStatus $newStatus Nouveau statut
@@ -96,7 +97,7 @@ class Room extends Model
         }
 
         $oldStatus = $this->status;
-        
+
         // Mise à jour du statut
         $this->update(['status' => $newStatus]);
 
@@ -104,9 +105,9 @@ class Room extends Model
         // Si null passé ET auth disponible → on récupère l'ID
         // Si auth non disponible (CLI) → on met null (système)
         $resolvedUserId = $userId;
-        
-        if ($resolvedUserId === null && auth()->check()) {
-            $resolvedUserId = auth()->id();
+
+        if ($resolvedUserId === null && Auth::check()) {
+            $resolvedUserId = Auth::id();
         }
 
         // Création de l'historique
