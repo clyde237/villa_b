@@ -8,15 +8,15 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
-<body class="flex h-screen overflow-hidden bg-[#F5F0E8]">
+<body class="flex h-screen overflow-hidden bg-accent/30 font-body">
 
     {{-- ========== SIDEBAR ========== --}}
     <aside class="w-48 flex-shrink-0 bg-primary flex flex-col h-full">
 
         {{-- Logo --}}
-        <div class="px-4 py-5 border-b border-[#4a2a14]">
+        <div class="px-4 py-5 border-b border-surface-dark">
             <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 rounded-full">
+                <div class="w-9 h-9 rounded-full overflow-hidden flex-shrink-0">
                     <img src="{{ asset('images/logo.png') }}"
                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"
                          class="bg-white w-full h-full object-cover">
@@ -34,9 +34,8 @@
         {{-- Navigation --}}
         <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-5">
 
-            {{-- Section Hôtel --}}
             <div>
-                <p class="text-[#8a6a50] text-[10px] font-semibold uppercase tracking-widest mb-2 px-2">Hôtel</p>
+                <p class="text-secondary/40 text-[10px] font-semibold uppercase tracking-widest mb-2 px-2">Hôtel</p>
                 <ul class="space-y-0.5">
                     <x-sidebar-link route="dashboard" icon="grid">Tableau de bord</x-sidebar-link>
                     <x-sidebar-link route="rooms.index" icon="door">Chambres</x-sidebar-link>
@@ -45,18 +44,16 @@
                 </ul>
             </div>
 
-            {{-- Section Restaurant --}}
             <div>
-                <p class="text-[#8a6a50] text-[10px] font-semibold uppercase tracking-widest mb-2 px-2">Restaurant</p>
+                <p class="text-secondary/40 text-[10px] font-semibold uppercase tracking-widest mb-2 px-2">Restaurant</p>
                 <ul class="space-y-0.5">
                     <x-sidebar-link route="#" icon="receipt">Commandes</x-sidebar-link>
                     <x-sidebar-link route="#" icon="book">Menu</x-sidebar-link>
                 </ul>
             </div>
 
-            {{-- Section Gestion --}}
             <div>
-                <p class="text-[#8a6a50] text-[10px] font-semibold uppercase tracking-widest mb-2 px-2">Gestion</p>
+                <p class="text-secondary/40 text-[10px] font-semibold uppercase tracking-widest mb-2 px-2">Gestion</p>
                 <ul class="space-y-0.5">
                     <x-sidebar-link route="customers.index" icon="users">Clients</x-sidebar-link>
                     <x-sidebar-link route="#" icon="box">Inventaires</x-sidebar-link>
@@ -66,7 +63,7 @@
         </nav>
 
         {{-- User info --}}
-        <div class="px-3 py-4 border-t border-[#4a2a14]">
+        <div class="px-3 py-4 border-t border-surface-dark">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                     <div class="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
@@ -76,13 +73,12 @@
                     </div>
                     <div class="min-w-0">
                         <p class="text-white text-xs font-medium truncate">{{ Auth::user()->name }}</p>
-                        <p class="text-secondary text-[10px] capitalize">{{ Auth::user()->role ?? 'Admin' }}</p>
+                        <p class="text-secondary/60 text-[10px] capitalize">{{ Auth::user()->role ?? 'Admin' }}</p>
                     </div>
                 </div>
-                {{-- Logout --}}
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
-                    <button type="submit" class="text-[#8a6a50] hover:text-secondary transition-colors">
+                    <button type="submit" class="text-secondary/40 hover:text-secondary transition-colors">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
@@ -97,20 +93,20 @@
     <div class="flex-1 flex flex-col overflow-hidden">
 
         {{-- Top bar --}}
-        <header class="bg-[#F5F0E8] border-b border-[#e0d5c5] px-8 py-3 flex items-center justify-between flex-shrink-0">
+        <header class="bg-accent/30 border-b border-secondary/20 px-8 py-3 flex items-center justify-between flex-shrink-0">
             <p class="text-primary font-medium text-sm">@yield('title', 'Tableau de bord')</p>
             <div class="flex items-center gap-4">
                 <span class="flex items-center gap-1.5 text-xs text-green-600 font-medium">
                     <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                     En ligne
                 </span>
-                <span class="text-xs text-[#8a7a6a]">
+                <span class="text-xs text-primary/50">
                     {{ ucfirst(\Carbon\Carbon::now()->locale('fr')->isoFormat('ddd. D MMM')) }}
                 </span>
             </div>
         </header>
 
-        {{-- Page content --}}
+        {{-- Contenu --}}
         <main class="flex-1 overflow-y-auto px-8 py-6">
             @yield('content')
         </main>
