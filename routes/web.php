@@ -30,9 +30,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // --- CHAMBRES ---
     Route::prefix('rooms')->name('rooms.')->group(function () {
-        Route::get('/',              [RoomController::class, 'index'])->name('index');
-        Route::get('/{room}',        [RoomController::class, 'show'])->name('show');
-        Route::post('/{room}/status',[RoomController::class, 'updateStatus'])->name('updateStatus');
+        Route::get('/',                [RoomController::class, 'index'])->name('index');
+        Route::post('/',               [RoomController::class, 'store'])->name('store');
+        Route::get('/{room}',          [RoomController::class, 'show'])->name('show');
+        Route::put('/{room}',          [RoomController::class, 'update'])->name('update');
+        Route::delete('/{room}',       [RoomController::class, 'destroy'])->name('destroy');
+        Route::post('/{room}/status',  [RoomController::class, 'updateStatus'])->name('updateStatus');
+
+        // Types de chambres
+        Route::post('/types/store',         [RoomController::class, 'storeType'])->name('types.store');
+        Route::put('/types/{roomType}',     [RoomController::class, 'updateType'])->name('types.update');
+        Route::delete('/types/{roomType}',  [RoomController::class, 'destroyType'])->name('types.destroy');
     });
 
     // --- RÉSERVATIONS ---
@@ -54,7 +62,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/create',         [CustomerController::class, 'create'])->name('create');
         Route::post('/',              [CustomerController::class, 'store'])->name('store');
         Route::get('/{customer}',     [CustomerController::class, 'show'])->name('show');
-        Route::get('/{customer}/edit',[CustomerController::class, 'edit'])->name('edit');
+        Route::get('/{customer}/edit', [CustomerController::class, 'edit'])->name('edit');
         Route::put('/{customer}',     [CustomerController::class, 'update'])->name('update');
     });
 
