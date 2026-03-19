@@ -37,17 +37,17 @@ class Booking extends Model
         'group_booking_id',     // Null si individuel
         'booking_number',       // Numéro unique affiché (VB-2025-0001)
         'status',
-        
+
         // Dates
         'check_in',
         'check_out',
         'actual_check_in',      // Heure réelle d'arrivée
         'actual_check_out',     // Heure réelle de départ
-        
+
         // Personnes
         'adults_count',
         'children_count',
-        
+
         // Tarification
         'total_nights',
         'price_per_night',      // Prix appliqué (peut différer du tarif base)
@@ -56,17 +56,17 @@ class Booking extends Model
         'tax_amount',
         'discount_amount',      // Points fidélité ou remise
         'total_amount',         // Montant final
-        
+
         // Paiement
         'deposit_amount',       // Acompte versé
         'paid_amount',          // Total encaissé
         'balance_due',          // Reste à payer
-        
+
         // Origine
         'source',               // 'direct', 'phone', 'email', 'ota_bookingcom'...
         'notes',                // Demandes spéciales
         'internal_notes',       // Notes staff (pas visible client)
-        
+
         // Utilisateurs
         'created_by',           // Réceptionniste qui a créé
         'checked_in_by',        // Qui a fait le check-in
@@ -112,11 +112,11 @@ class Booking extends Model
         $prefix = 'VB';
         $year = now()->year;
         $lastBooking = self::whereYear('created_at', $year)
-                          ->orderBy('id', 'desc')
-                          ->first();
-        
+            ->orderBy('id', 'desc')
+            ->first();
+
         $sequence = $lastBooking ? (int)substr($lastBooking->booking_number, -6) + 1 : 1;
-        
+
         return sprintf('%s-%d-%06d', $prefix, $year, $sequence);
     }
 
@@ -162,13 +162,13 @@ class Booking extends Model
     public function scopeArrivingToday($query)
     {
         return $query->where('check_in', today())
-                     ->whereIn('status', [BookingStatus::CONFIRMED, BookingStatus::PENDING]);
+            ->whereIn('status', [BookingStatus::CONFIRMED, BookingStatus::PENDING]);
     }
 
     public function scopeDepartingToday($query)
     {
         return $query->where('check_out', today())
-                     ->where('status', BookingStatus::CHECKED_IN);
+            ->where('status', BookingStatus::CHECKED_IN);
     }
 
     public function scopeInHouse($query)
@@ -185,10 +185,10 @@ class Booking extends Model
     {
         $this->total_nights = $this->check_in->diffInDays($this->check_out);
         $this->total_room_amount = $this->total_nights * $this->price_per_night;
-        $this->total_amount = $this->total_room_amount 
-                            + $this->extras_amount 
-                            + $this->tax_amount 
-                            - $this->discount_amount;
+        $this->total_amount = $this->total_room_amount
+            + $this->extras_amount
+            + $this->tax_amount
+            - $this->discount_amount;
         $this->balance_due = $this->total_amount - $this->paid_amount;
         $this->save();
     }
@@ -202,5 +202,13 @@ class Booking extends Model
             BookingStatus::PENDING,
             BookingStatus::CONFIRMED,
         ]);
+    }
+
+    /**
+     * Relation entre Booking et FolioItem : une réservation a un folio (prestations)
+     */
+    public function folioItems(): HasMany
+    {
+        return $this->hasMany(FolioItem::class)->orderBy('occurred_at');
     }
 }
