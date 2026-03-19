@@ -85,7 +85,7 @@ class CheckOutService
         if ($booking->balance_due > 0) {
             throw new \LogicException(
                 "Solde impayé de " . number_format($booking->balance_due / 100, 0, ',', ' ') . " FCFA. " .
-                "Réglez le solde avant le check-out."
+                    "Réglez le solde avant le check-out."
             );
         }
     }
@@ -152,7 +152,7 @@ class CheckOutService
             'tenant_id'   => $booking->tenant_id,
             'invoice_id'  => $invoice->id,
             'description' => "Hébergement — {$booking->total_nights} nuit(s) × " .
-                             number_format($booking->price_per_night / 100, 0, ',', ' ') . " FCFA",
+                number_format($booking->price_per_night / 100, 0, ',', ' ') . " FCFA",
             'quantity'    => $booking->total_nights,
             'unit_price'  => $booking->price_per_night,
             'total_price' => $booking->total_room_amount,
@@ -202,5 +202,10 @@ class CheckOutService
             : 1;
 
         return sprintf('F-%d-%06d', $year, $sequence);
+    }
+
+    public function recalculateTotals(Booking $booking): void
+    {
+        $this->finalizeAmounts($booking);
     }
 }
