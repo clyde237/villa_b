@@ -6,6 +6,7 @@ use App\Http\Controllers\RoomController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\HousekeepingController;
+use App\Http\Controllers\InvoiceController;
 
 // ===== AUTH ROUTES (Breeze) =====
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -54,6 +55,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{booking}/checkin',      [BookingController::class, 'checkIn'])->name('checkIn');
         Route::post('/{booking}/checkout',     [BookingController::class, 'checkOut'])->name('checkOut');
         Route::post('/{booking}/cancel',       [BookingController::class, 'cancel'])->name('cancel');
+        Route::post('/{booking}/folio',        [BookingController::class, 'addFolioItem'])->name('folio.add');
+        Route::delete('/{booking}/folio/{folioItem}', [BookingController::class, 'removeFolioItem'])->name('folio.remove');
+        Route::post('/{booking}/payment', [BookingController::class, 'addPayment'])->name('payment.add');
     });
 
     // --- CLIENTS ---
@@ -71,6 +75,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/',                    [HousekeepingController::class, 'index'])->name('index');
         Route::post('/{room}/clean',       [HousekeepingController::class, 'markCleaning'])->name('clean');
         Route::post('/{room}/ready',       [HousekeepingController::class, 'markReady'])->name('ready');
+    });
+
+    Route::prefix('invoices')->name('invoices.')->group(function () {
+        Route::get('/{invoice}', [InvoiceController::class, 'show'])->name('show');
     });
 });
 

@@ -2,23 +2,21 @@
 
 namespace App\Providers;
 
+use App\Services\CheckOutService;
+use App\Services\LoyaltyService;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
-        //
+        // Injection de dépendance automatique
+        $this->app->bind(LoyaltyService::class);
+        $this->app->bind(CheckOutService::class);
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
-        \Carbon\Carbon::setLocale('fr'); // ← ajoute cette ligne
+        \Carbon\Carbon::setLocale('fr');
     }
 }
