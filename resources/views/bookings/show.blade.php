@@ -78,6 +78,14 @@
             </button>
         </form>
         @endif
+
+        @if($booking->isEditable())
+        <a href="{{ route('bookings.edit', $booking) }}"
+            class="flex items-center gap-2 px-4 py-2 bg-white border border-secondary/30 text-primary text-sm font-medium rounded-lg hover:bg-accent/20 transition-colors">
+            <i data-lucide="pencil" class="w-4 h-4"></i>
+            Modifier
+        </a>
+        @endif
     </div>
 </div>
 
@@ -465,7 +473,7 @@
                 </label>
                 <input type="number"
                     name="amount"
-                    value="{{ $booking->balance_due / 100 }}"
+                    value="{{ (int) ceil($booking->balance_due / 100) }}"
                     min="1"
                     required
                     class="w-full px-3 py-2 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary">

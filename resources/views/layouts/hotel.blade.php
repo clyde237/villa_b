@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
+
 <body class="flex h-screen overflow-hidden bg-accent/30 font-body">
 
     {{-- ========== SIDEBAR ========== --}}
@@ -18,8 +20,8 @@
             <div class="flex items-center gap-3">
                 <div class="w-9 h-9 rounded-full overflow-hidden flex-shrink-0">
                     <img src="{{ asset('images/logo.png') }}"
-                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"
-                         class="bg-white w-full h-full object-cover">
+                        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"
+                        class="bg-white w-full h-full object-cover">
                     <div class="w-full h-full bg-secondary rounded-full items-center justify-center hidden">
                         <span class="text-primary font-heading font-bold text-sm">VB</span>
                     </div>
@@ -39,7 +41,43 @@
                 <ul class="space-y-0.5">
                     <x-sidebar-link route="dashboard" icon="grid">Tableau de bord</x-sidebar-link>
                     <x-sidebar-link route="rooms.index" icon="door">Chambres</x-sidebar-link>
-                    <x-sidebar-link route="bookings.index" icon="calendar">Réservations</x-sidebar-link>
+                    {{-- Réservations avec sous-menu --}}
+                    <li>
+                        <a href="{{ route('bookings.index') }}"
+                            class="flex items-center gap-2.5 px-2 py-1.5 rounded-md text-xs font-medium transition-all
+                      {{ request()->routeIs('bookings.*') || request()->routeIs('groups.*')
+                          ? 'bg-[#4a2a14] text-white'
+                          : 'text-[#c4a882] hover:bg-[#4a2a14] hover:text-white' }}">
+                            <i data-lucide="calendar" class="w-3.5 h-3.5 flex-shrink-0"></i>
+                            Réservations
+                        </a>
+
+                        {{-- Sous-menu visible si on est dans réservations ou groupes --}}
+                        @if(request()->routeIs('bookings.*') || request()->routeIs('groups.*'))
+                        <ul class="mt-0.5 ml-4 space-y-0.5 border-l border-secondary/20 pl-3">
+                            <li>
+                                <a href="{{ route('bookings.index') }}"
+                                    class="flex items-center gap-2 py-1.5 text-xs font-medium transition-all
+                                  {{ request()->routeIs('bookings.*')
+                                      ? 'text-white'
+                                      : 'text-[#c4a882] hover:text-white' }}">
+                                    <i data-lucide="user" class="w-3 h-3 flex-shrink-0"></i>
+                                    Individuelles
+                                </a>
+                            </li>
+                            <li>
+                                <a href="{{ route('groups.index') }}"
+                                    class="flex items-center gap-2 py-1.5 text-xs font-medium transition-all
+                                  {{ request()->routeIs('groups.*')
+                                      ? 'text-white'
+                                      : 'text-[#c4a882] hover:text-white' }}">
+                                    <i data-lucide="users" class="w-3 h-3 flex-shrink-0"></i>
+                                    Groupes
+                                </a>
+                            </li>
+                        </ul>
+                        @endif
+                    </li>
                     <x-sidebar-link route="housekeeping.index" icon="sparkles">Housekeeping</x-sidebar-link>
                 </ul>
             </div>
@@ -81,7 +119,7 @@
                     <button type="submit" class="text-secondary/40 hover:text-secondary transition-colors">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                         </svg>
                     </button>
                 </form>
@@ -113,4 +151,5 @@
     </div>
 
 </body>
+
 </html>
