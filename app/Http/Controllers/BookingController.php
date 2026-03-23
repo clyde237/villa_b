@@ -407,6 +407,11 @@ class BookingController extends Controller
         // Montant saisi en FCFA → on stocke en centimes
         $amountCentimes = $validated['amount'] * 100;
 
+        // Ajoute cette vérification après le calcul de $amountCentimes
+        if ($amountCentimes > $booking->balance_due + 100) {
+            return back()->withErrors(['payment' => 'Le montant dépasse le solde dû.']);
+        }
+
         // Génère le numéro de paiement
         $lastPayment = \App\Models\Payment::withoutGlobalScopes()
             ->where('tenant_id', $tenantId)
@@ -434,5 +439,103 @@ class BookingController extends Controller
         return redirect()->route('bookings.show', $booking)
             ->with('success', 'Paiement enregistré. Solde restant : ' .
                 number_format($booking->balance_due / 100, 0, ',', ' ') . ' FCFA');
+    }
+
+    public function edit(Booking $booking)
+    {
+        if (!$booking->isEditable()) {
+            return redirect()
+                ->route('bookings.show', $booking)
+                ->withErrors(['edit' => 'Cette réservation ne peut plus être modifiée.']);
+        }
+
+        $booking->load(['customer', 'room.roomType']);
+        $roomTypes = RoomType::with('rooms')->get();
+
+        return view('bookings.edit', compact('booking', 'roomTypes'));
+    }
+
+    public function update(Request $request, Booking $booking)
+    {
+        if (!$booking->isEditable()) {
+            return redirect()
+                ->route('bookings.show', $booking)
+                ->withErrors(['edit' => 'Cette réservation ne peut plus être modifiée.']);
+        }
+
+        $validated = $request->validate([
+            'room_id'        => ['required', 'exists:rooms,id'],
+            'check_in'       => ['required', 'date'],
+            'check_out'      => ['required', 'date', 'after:check_in'],
+            'adults_count'   => ['required', 'integer', 'min:1'],
+            'children_count' => ['nullable', 'integer', 'min:0'],
+            'source'         => ['nullable', 'string'],
+            'notes'          => ['nullable', 'string'],
+        ]);
+
+        $room     = Room::with('roomType')->findOrFail($validated['room_id']);
+        $checkIn  = \Carbon\Carbon::parse($validated['check_in']);
+        $checkOut = \Carbon\Carbon::parse($validated['check_out']);
+        $nights   = $checkIn->diffInDays($checkOut);
+
+        // Vérifie disponibilité si chambre ou dates ont changé
+        if (
+            $room->id !== $booking->room_id ||
+            $checkIn->ne($booking->check_in) ||
+            $checkOut->ne($booking->check_out)
+        ) {
+            $conflict = Booking::where('room_id', $room->id)
+                ->where('id', '!=', $booking->id)
+                ->whereNotIn('status', ['cancelled', 'no_show'])
+                ->where(function ($q) use ($checkIn, $checkOut) {
+                    $q->whereBetween('check_in', [$checkIn, $checkOut])
+                        ->orWhereBetween('check_out', [$checkIn, $checkOut])
+                        ->orWhere(function ($sq) use ($checkIn, $checkOut) {
+                            $sq->where('check_in', '<=', $checkIn)
+                                ->where('check_out', '>=', $checkOut);
+                        });
+                })->exists();
+
+            if ($conflict) {
+                return back()->withErrors([
+                    'room_id' => 'Cette chambre est déjà réservée sur cette période.'
+                ])->withInput();
+            }
+        }
+
+        $pricePerNight    = $room->roomType->base_price;
+        $totalRoomAmount  = $nights * $pricePerNight;
+        $taxAmount        = (int) round($totalRoomAmount * 0.1925);
+        $totalAmount      = $totalRoomAmount + $taxAmount;
+
+        $booking->update([
+            'room_id'          => $room->id,
+            'check_in'         => $validated['check_in'],
+            'check_out'        => $validated['check_out'],
+            'adults_count'     => $validated['adults_count'],
+            'children_count'   => $validated['children_count'] ?? 0,
+            'total_nights'     => $nights,
+            'price_per_night'  => $pricePerNight,
+            'total_room_amount' => $totalRoomAmount,
+            'tax_amount'       => $taxAmount,
+            'total_amount'     => $totalAmount,
+            'balance_due'      => max(0, $totalAmount - $booking->paid_amount),
+            'source'           => $validated['source'] ?? $booking->source,
+            'notes'            => $validated['notes'],
+        ]);
+
+        // Met à jour la ligne hébergement dans le folio
+        $booking->folioItems()
+            ->where('type', FolioItem::TYPE_ROOM)
+            ->update([
+                'description' => "Hébergement {$nights} nuit(s) — Chambre {$room->number}",
+                'quantity'    => $nights,
+                'unit_price'  => $pricePerNight,
+                'total_price' => $totalRoomAmount,
+            ]);
+
+        return redirect()
+            ->route('bookings.show', $booking)
+            ->with('success', 'Réservation mise à jour.');
     }
 }
