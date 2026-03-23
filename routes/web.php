@@ -7,6 +7,7 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\HousekeepingController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\GroupBookingController;
 
 // ===== AUTH ROUTES (Breeze) =====
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -58,6 +59,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{booking}/folio',        [BookingController::class, 'addFolioItem'])->name('folio.add');
         Route::delete('/{booking}/folio/{folioItem}', [BookingController::class, 'removeFolioItem'])->name('folio.remove');
         Route::post('/{booking}/payment', [BookingController::class, 'addPayment'])->name('payment.add');
+    });
+
+    Route::prefix('groups')->name('groups.')->group(function () {
+        Route::get('/',                          [GroupBookingController::class, 'index'])->name('index');
+        Route::get('/create',                    [GroupBookingController::class, 'create'])->name('create');
+        Route::post('/',                         [GroupBookingController::class, 'store'])->name('store');
+        Route::get('/{groupBooking}',            [GroupBookingController::class, 'show'])->name('show');
+        Route::post('/{groupBooking}/room',      [GroupBookingController::class, 'addRoom'])->name('addRoom');
+        Route::delete('/{groupBooking}/room/{booking}', [GroupBookingController::class, 'removeRoom'])->name('removeRoom');
+        Route::post('/{groupBooking}/checkin',   [GroupBookingController::class, 'checkInAll'])->name('checkInAll');
+        Route::post('/{groupBooking}/checkout',  [GroupBookingController::class, 'checkOutAll'])->name('checkOutAll');
+        Route::post('/{groupBooking}/folio', [GroupBookingController::class, 'addGroupFolioItem'])->name('folio.add');
+        Route::post('/{groupBooking}/payment', [GroupBookingController::class, 'addGroupPayment'])->name('payment.add');
+        Route::get('/{groupBooking}/invoice', [GroupBookingController::class, 'invoice'])->name('invoice');
+        Route::get('/{groupBooking}/edit',   [GroupBookingController::class, 'edit'])->name('edit');
+        Route::put('/{groupBooking}',        [GroupBookingController::class, 'update'])->name('update');
+        Route::post('/{groupBooking}/cancel', [GroupBookingController::class, 'cancel'])->name('cancel');
     });
 
     // --- CLIENTS ---
