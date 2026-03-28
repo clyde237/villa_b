@@ -16,8 +16,19 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): View
     {
+        $user = $request->user();
+
+        $permissionCards = [
+            ['label' => 'Acces chambres', 'allowed' => $user->canManageRooms()],
+            ['label' => 'Acces reservations', 'allowed' => $user->canManageBookings()],
+            ['label' => 'Acces donnees financieres', 'allowed' => $user->canAccessFinancialData()],
+            ['label' => 'Gestion staff', 'allowed' => $user->hasAnyRole(['manager', 'admin'])],
+            ['label' => 'Actions housekeeping', 'allowed' => $user->hasAnyRole(['housekeeping_leader', 'housekeeping_staff', 'housekeeping', 'manager'])],
+        ];
+
         return view('profile.edit', [
-            'user' => $request->user(),
+            'user' => $user,
+            'permissionCards' => $permissionCards,
         ]);
     }
 

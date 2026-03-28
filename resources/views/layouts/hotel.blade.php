@@ -100,7 +100,7 @@
 
             <div class="px-3 py-4 border-t border-surface-dark">
                 <div class="flex items-center justify-between gap-2">
-                    <div class="flex items-center gap-2 flex-1 min-w-0">
+                    <a href="{{ route('profile.edit') }}" class="flex items-center gap-2 flex-1 min-w-0 rounded-lg px-1 py-1 hover:bg-[#4a2a14] transition-colors">
                         <div class="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
                             <span class="text-primary font-semibold text-xs">
                                 {{ strtoupper(substr(Auth::user()->name, 0, 2)) }}
@@ -110,7 +110,7 @@
                             <p class="text-white text-xs font-medium truncate">{{ \Illuminate\Support\Str::limit(Auth::user()->name, 13, '...') }}</p>
                             <p class="text-secondary/60 text-[10px] capitalize truncate">{{ Auth::user()->role ?? 'Admin' }}</p>
                         </div>
-                    </div>
+                    </a>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
                         <button type="submit" class="inline-flex h-8 w-8 items-center justify-center flex-shrink-0 text-secondary/40 hover:text-secondary transition-colors">
