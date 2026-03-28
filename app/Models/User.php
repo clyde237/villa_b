@@ -5,6 +5,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -61,11 +63,35 @@ class User extends Authenticatable
     }
 
     /**
+     * Relation : L'utilisateur peut avoir plusieurs rôles (RBAC étendu)
+     */
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(Role::class)->withTimestamps();
+    }
+
+    public function housekeepingTeams(): BelongsToMany
+    {
+        return $this->belongsToMany(HousekeepingTeam::class, 'housekeeping_team_user')->withTimestamps();
+    }
+
+    public function ledHousekeepingTeams(): HasMany
+    {
+        return $this->hasMany(HousekeepingTeam::class, 'leader_id');
+    }
+
+    /**
      * Helper : Vérifie si l'utilisateur a un rôle spécifique
-     * Utilisé dans les Blade @can, Policies, et Middleware
+     * Compatible avec l'ancien système (colonne role) et le nouveau (relation roles)
      */
     public function hasRole(string $role): bool
     {
+        // Vérifier d'abord la nouvelle relation roles
+        if ($this->roles()->where('slug', $role)->exists()) {
+            return true;
+        }
+
+        // Fallback vers l'ancienne colonne role pour compatibilité
         return $this->role === $role;
     }
 
@@ -74,6 +100,12 @@ class User extends Authenticatable
      */
     public function hasAnyRole(array $roles): bool
     {
+        // Vérifier d'abord la nouvelle relation roles
+        if ($this->roles()->whereIn('slug', $roles)->exists()) {
+            return true;
+        }
+
+        // Fallback vers l'ancienne colonne role pour compatibilité
         return in_array($this->role, $roles);
     }
 
@@ -82,18 +114,60 @@ class User extends Authenticatable
      */
     public function isAdmin(): bool
     {
-        return $this->role === self::ROLE_ADMIN;
+        return $this->hasRole(self::ROLE_ADMIN);
     }
 
     /**
      * Vérifie l'accès financier (section 3 : Housekeeping sans accès financier)
+     * Étendu pour inclure le comptable
      */
     public function canAccessFinancialData(): bool
     {
-        return in_array($this->role, [
+        return $this->hasAnyRole([
             self::ROLE_ADMIN,
             self::ROLE_MANAGER,
             self::ROLE_RECEPTION,
+            'cashier',      // Nouveau rôle caissier
+            'accountant',   // Nouveau rôle comptable
         ]);
+    }
+
+    /**
+     * Vérifie si l'utilisateur peut gérer les chambres
+     */
+    public function canManageRooms(): bool
+    {
+        return $this->hasAnyRole([
+            self::ROLE_ADMIN,
+            self::ROLE_MANAGER,
+            'reception',
+            'housekeeping_leader',
+        ]);
+    }
+
+    /**
+     * Vérifie si l'utilisateur peut gérer les réservations
+     */
+    public function canManageBookings(): bool
+    {
+        return $this->hasAnyRole([
+            self::ROLE_ADMIN,
+            self::ROLE_MANAGER,
+            'reception',
+        ]);
+    }
+
+    /**
+     * Vérifie si l'utilisateur peut voir un tenant spécifique (multi-tenant isolation)
+     */
+    public function canViewTenant(?int $tenantId): bool
+    {
+        // Admin global peut voir tous les tenants
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        // Utilisateur doit appartenir au même tenant
+        return $this->tenant_id === $tenantId;
     }
 }

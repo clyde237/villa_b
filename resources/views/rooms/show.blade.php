@@ -67,6 +67,7 @@
         </div>
 
         {{-- Changer le statut --}}
+        @role('housekeeping_leader', 'housekeeping_staff', 'housekeeping', 'manager', 'reception')
         <div class="bg-white rounded-xl shadow-sm p-5">
             <h2 class="font-heading font-semibold text-primary text-sm mb-4">Changer le statut</h2>
 
@@ -82,7 +83,7 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('rooms.updateStatus', $room) }}">
+            <form method="POST" action="{{ route('rooms.updateStatus', $room) }}" class="expect-popup">
                 @csrf
                 <div class="mb-3">
                     <label class="block text-xs text-primary/50 mb-1.5">Nouveau statut</label>
@@ -108,6 +109,7 @@
                 </button>
             </form>
         </div>
+        @endrole
 
         {{-- Historique des statuts --}}
         <div class="bg-white rounded-xl shadow-sm overflow-hidden">

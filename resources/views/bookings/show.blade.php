@@ -36,7 +36,8 @@
     {{-- Actions selon statut --}}
     <div class="flex items-center gap-2">
         @if($booking->status->value === 'confirmed')
-        <form method="POST" action="{{ route('bookings.checkIn', $booking) }}">
+        @role('reception', 'manager')
+        <form method="POST" action="{{ route('bookings.checkIn', $booking) }}" class="expect-popup">
             @csrf
             <button type="submit"
                 class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors">
@@ -44,10 +45,12 @@
                 Check-in
             </button>
         </form>
+        @endrole
         @endif
 
         @if($booking->status->value === 'checked_in')
-        <form method="POST" action="{{ route('bookings.checkOut', $booking) }}">
+        @role('reception', 'manager')
+        <form method="POST" action="{{ route('bookings.checkOut', $booking) }}" class="expect-popup">
             @csrf
             <button type="submit"
                 onclick="return confirm('Confirmer le check-out ?')"
@@ -56,19 +59,23 @@
                 Check-out
             </button>
         </form>
+        @endrole
         @endif
 
         {{-- Ajoute après le bloc des boutons d'action en haut --}}
         @if($booking->status->value === 'completed' && $booking->invoice)
+        @role('manager', 'reception', 'cashier')
         <a href="{{ route('invoices.show', $booking->invoice) }}"
             class="flex items-center gap-2 px-4 py-2 bg-white border border-secondary/30 text-primary text-sm font-medium rounded-lg hover:bg-accent/20 transition-colors">
             <i data-lucide="file-text" class="w-4 h-4"></i>
             Voir la facture
         </a>
+        @endrole
         @endif
 
         @if(in_array($booking->status->value, ['pending', 'confirmed']))
-        <form method="POST" action="{{ route('bookings.cancel', $booking) }}">
+        @role('reception', 'manager')
+        <form method="POST" action="{{ route('bookings.cancel', $booking) }}" class="expect-popup">
             @csrf
             <button type="submit"
                 onclick="return confirm('Annuler cette réservation ?')"
@@ -77,14 +84,17 @@
                 Annuler
             </button>
         </form>
+        @endrole
         @endif
 
         @if($booking->isEditable())
+        @role('reception', 'manager')
         <a href="{{ route('bookings.edit', $booking) }}"
             class="flex items-center gap-2 px-4 py-2 bg-white border border-secondary/30 text-primary text-sm font-medium rounded-lg hover:bg-accent/20 transition-colors">
             <i data-lucide="pencil" class="w-4 h-4"></i>
             Modifier
         </a>
+        @endrole
         @endif
     </div>
 </div>

@@ -2,10 +2,10 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Room;
 use App\Models\RoomType;
 use App\Models\Tenant;
+use Illuminate\Database\Seeder;
 
 class RoomSeeder extends Seeder
 {
@@ -13,36 +13,42 @@ class RoomSeeder extends Seeder
     {
         $tenantId = Tenant::where('slug', 'villa-boutanga')->value('id');
 
-        $std  = RoomType::where('code', 'STD')->value('id');
-        $sup  = RoomType::where('code', 'SUP')->value('id');
-        $sjr  = RoomType::where('code', 'SJR')->value('id');
-        $spres = RoomType::where('code', 'SPRES')->value('id');
+        if (!$tenantId) {
+            return;
+        }
+
+        $roomTypes = RoomType::where('tenant_id', $tenantId)
+            ->pluck('id', 'code');
 
         $rooms = [
-            // Étage 1 — Standards
-            ['number' => '101', 'floor' => '1', 'view_type' => 'garden',   'room_type_id' => $std],
-            ['number' => '102', 'floor' => '1', 'view_type' => 'garden',   'room_type_id' => $std],
-            ['number' => '103', 'floor' => '1', 'view_type' => 'courtyard','room_type_id' => $std],
-            // Étage 1 — Supérieures
-            ['number' => '104', 'floor' => '1', 'view_type' => 'pool',     'room_type_id' => $sup],
-            ['number' => '105', 'floor' => '1', 'view_type' => 'pool',     'room_type_id' => $sup],
-            // Étage 2 — Standards
-            ['number' => '201', 'floor' => '2', 'view_type' => 'garden',   'room_type_id' => $std],
-            ['number' => '202', 'floor' => '2', 'view_type' => 'garden',   'room_type_id' => $std],
-            // Étage 2 — Supérieures
-            ['number' => '203', 'floor' => '2', 'view_type' => 'heritage', 'room_type_id' => $sup],
-            // Étage 2 — Suite Junior
-            ['number' => '204', 'floor' => '2', 'view_type' => 'pool',     'room_type_id' => $sjr],
-            // Étage 3 — Suite Présidentielle
-            ['number' => '301', 'floor' => '3', 'view_type' => 'heritage', 'room_type_id' => $spres],
+            ['number' => '101', 'floor' => '1', 'view_type' => 'garden', 'room_type_id' => $roomTypes['STD'] ?? null],
+            ['number' => '102', 'floor' => '1', 'view_type' => 'garden', 'room_type_id' => $roomTypes['STD'] ?? null],
+            ['number' => '103', 'floor' => '1', 'view_type' => 'courtyard', 'room_type_id' => $roomTypes['STD'] ?? null],
+            ['number' => '104', 'floor' => '1', 'view_type' => 'pool', 'room_type_id' => $roomTypes['SUP'] ?? null],
+            ['number' => '105', 'floor' => '1', 'view_type' => 'pool', 'room_type_id' => $roomTypes['SUP'] ?? null],
+            ['number' => '201', 'floor' => '2', 'view_type' => 'garden', 'room_type_id' => $roomTypes['STD'] ?? null],
+            ['number' => '202', 'floor' => '2', 'view_type' => 'garden', 'room_type_id' => $roomTypes['STD'] ?? null],
+            ['number' => '203', 'floor' => '2', 'view_type' => 'heritage', 'room_type_id' => $roomTypes['SUP'] ?? null],
+            ['number' => '204', 'floor' => '2', 'view_type' => 'pool', 'room_type_id' => $roomTypes['SJR'] ?? null],
+            ['number' => '301', 'floor' => '3', 'view_type' => 'heritage', 'room_type_id' => $roomTypes['SPRES'] ?? null],
         ];
 
         foreach ($rooms as $room) {
-            Room::create(array_merge($room, [
-                'tenant_id' => $tenantId,
-                'status'    => 'available',
-                'is_active' => true,
-            ]));
+            if (!$room['room_type_id']) {
+                continue;
+            }
+
+            Room::updateOrCreate(
+                [
+                    'tenant_id' => $tenantId,
+                    'number' => $room['number'],
+                ],
+                array_merge($room, [
+                    'tenant_id' => $tenantId,
+                    'status' => 'available',
+                    'is_active' => true,
+                ])
+            );
         }
     }
 }

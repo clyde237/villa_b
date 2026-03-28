@@ -2,9 +2,10 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use App\Models\User;
+use App\Models\Role;
 use App\Models\Tenant;
+use App\Models\User;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 class UserSeeder extends Seeder
@@ -13,44 +14,94 @@ class UserSeeder extends Seeder
     {
         $tenant = Tenant::where('slug', 'villa-boutanga')->first();
 
-        // Super admin — pas de tenant (cross-établissements)
-        User::create([
-            'name'      => 'Super Admin',
-            'email'     => 'admin@villaboutanga.cm',
-            'password'  => Hash::make('password'),
-            'tenant_id' => null,
-            'role'      => 'admin',
-            'is_active' => true,
-        ]);
+        if (!$tenant) {
+            return;
+        }
 
-        // Directeur de l'établissement
-        User::create([
-            'name'      => 'Jean-Pierre Kamga',
-            'email'     => 'manager@villaboutanga.cm',
-            'password'  => Hash::make('password'),
-            'tenant_id' => $tenant->id,
-            'role'      => 'manager',
-            'is_active' => true,
-        ]);
+        $roles = Role::whereIn('slug', [
+            'admin',
+            'manager',
+            'reception',
+            'housekeeping_leader',
+            'housekeeping_staff',
+        ])->get()->keyBy('slug');
 
-        // Réceptionniste
-        User::create([
-            'name'      => 'Marie Tchoupo',
-            'email'     => 'reception@villaboutanga.cm',
-            'password'  => Hash::make('password'),
-            'tenant_id' => $tenant->id,
-            'role'      => 'reception',
-            'is_active' => true,
-        ]);
+        $admin = User::firstOrCreate(
+            ['email' => 'admin@villaboutanga.cm'],
+            [
+                'name' => 'Super Admin',
+                'password' => Hash::make('password'),
+                'tenant_id' => null,
+                'role' => 'admin',
+                'is_active' => true,
+            ]
+        );
+        $roles->get('admin')?->users()->syncWithoutDetaching([$admin->id]);
 
-        // Housekeeping
-        User::create([
-            'name'      => 'Paul Nguemo',
-            'email'     => 'housekeeping@villaboutanga.cm',
-            'password'  => Hash::make('password'),
-            'tenant_id' => $tenant->id,
-            'role'      => 'housekeeping',
-            'is_active' => true,
-        ]);
+        $manager = User::firstOrCreate(
+            ['email' => 'manager@villaboutanga.cm'],
+            [
+                'name' => 'Jean-Pierre Kamga',
+                'password' => Hash::make('password'),
+                'tenant_id' => $tenant->id,
+                'role' => 'manager',
+                'is_active' => true,
+            ]
+        );
+        $roles->get('manager')?->users()->syncWithoutDetaching([$manager->id]);
+
+        $reception = User::firstOrCreate(
+            ['email' => 'reception@villaboutanga.cm'],
+            [
+                'name' => 'Marie Tchoupo',
+                'password' => Hash::make('password'),
+                'tenant_id' => $tenant->id,
+                'role' => 'reception',
+                'is_active' => true,
+            ]
+        );
+        $roles->get('reception')?->users()->syncWithoutDetaching([$reception->id]);
+
+        $housekeepingLeader = User::firstOrCreate(
+            ['email' => 'housekeeping.leader@villaboutanga.cm'],
+            [
+                'name' => 'Paul Nguemo',
+                'password' => Hash::make('password'),
+                'tenant_id' => $tenant->id,
+                'role' => 'housekeeping_leader',
+                'is_active' => true,
+            ]
+        );
+        $roles->get('housekeeping_leader')?->users()->syncWithoutDetaching([$housekeepingLeader->id]);
+
+        $staffMembers = [
+            [
+                'name' => 'Aline Ndzi',
+                'email' => 'housekeeping.staff1@villaboutanga.cm',
+            ],
+            [
+                'name' => 'Brice Ndzié',
+                'email' => 'housekeeping.staff2@villaboutanga.cm',
+            ],
+            [
+                'name' => 'Cynthia Fokou',
+                'email' => 'housekeeping.staff3@villaboutanga.cm',
+            ],
+        ];
+
+        foreach ($staffMembers as $staffData) {
+            $staff = User::firstOrCreate(
+                ['email' => $staffData['email']],
+                [
+                    'name' => $staffData['name'],
+                    'password' => Hash::make('password'),
+                    'tenant_id' => $tenant->id,
+                    'role' => 'housekeeping_staff',
+                    'is_active' => true,
+                ]
+            );
+
+            $roles->get('housekeeping_staff')?->users()->syncWithoutDetaching([$staff->id]);
+        }
     }
 }
