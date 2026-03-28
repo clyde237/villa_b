@@ -8,6 +8,7 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\HousekeepingController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\GroupBookingController;
+use App\Http\Controllers\UserManagementController;
 
 // ===== AUTH ROUTES (Breeze) =====
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -100,6 +101,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::prefix('invoices')->name('invoices.')->middleware('role:manager,reception,cashier')->group(function () {
         Route::get('/{invoice}', [InvoiceController::class, 'show'])->name('show');
+    });
+
+    // --- UTILISATEURS (staff) ---
+    Route::prefix('users')->name('users.')->middleware('role:manager')->group(function () {
+        Route::get('/', [UserManagementController::class, 'index'])->name('index');
+        Route::post('/', [UserManagementController::class, 'store'])->name('store');
+        Route::put('/{user}', [UserManagementController::class, 'update'])->name('update');
+        Route::post('/{user}/toggle-status', [UserManagementController::class, 'toggleStatus'])->name('toggleStatus');
     });
 
     // --- COMPTABILITÉ (futur module) ---
