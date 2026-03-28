@@ -9,6 +9,8 @@ use App\Http\Controllers\HousekeepingController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\GroupBookingController;
 use App\Http\Controllers\UserManagementController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Auth\PasswordController;
 
 // ===== AUTH ROUTES (Breeze) =====
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -30,6 +32,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // --- DASHBOARD ---
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->name('dashboard');
+
+    // --- PROFIL ---
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::put('/password', [PasswordController::class, 'update'])->name('password.update');
 
     // --- CHAMBRES ---
     Route::prefix('rooms')->name('rooms.')->middleware('role:manager,reception,housekeeping_leader,housekeeping')->group(function () {
