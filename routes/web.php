@@ -11,6 +11,7 @@ use App\Http\Controllers\GroupBookingController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Auth\PasswordController;
+use App\Http\Controllers\DiscussionController;
 
 // ===== AUTH ROUTES (Breeze) =====
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -32,6 +33,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // --- DASHBOARD ---
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->name('dashboard');
+
+    // --- DISCUSSION INTERNE ---
+    Route::prefix('discussions')->name('discussions.')->group(function () {
+        Route::get('/', [DiscussionController::class, 'index'])->name('index');
+        Route::get('/conversations/list', [DiscussionController::class, 'conversationsList'])->name('conversations.list');
+        Route::get('/unread-summary', [DiscussionController::class, 'unreadSummary'])->name('unreadSummary');
+        Route::post('/conversations', [DiscussionController::class, 'createConversation'])->name('conversations.store');
+        Route::get('/conversations/{conversation}/poll', [DiscussionController::class, 'poll'])->name('conversations.poll');
+        Route::post('/conversations/{conversation}/archive', [DiscussionController::class, 'archiveConversation'])->name('conversations.archive');
+        Route::delete('/conversations/{conversation}', [DiscussionController::class, 'destroyConversation'])->name('conversations.destroy');
+        Route::post('/', [DiscussionController::class, 'store'])->name('store');
+    });
 
     // --- PROFIL ---
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

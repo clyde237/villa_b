@@ -80,6 +80,18 @@ class User extends Authenticatable
         return $this->hasMany(HousekeepingTeam::class, 'leader_id');
     }
 
+    public function discussionConversations(): BelongsToMany
+    {
+        return $this->belongsToMany(DiscussionConversation::class, 'discussion_conversation_user')
+            ->withPivot('last_read_at', 'archived_at', 'deleted_at')
+            ->withTimestamps();
+    }
+
+    public function discussionMessages(): HasMany
+    {
+        return $this->hasMany(DiscussionMessage::class);
+    }
+
     /**
      * Helper : Vérifie si l'utilisateur a un rôle spécifique
      * Compatible avec l'ancien système (colonne role) et le nouveau (relation roles)
