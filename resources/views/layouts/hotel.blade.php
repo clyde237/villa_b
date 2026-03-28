@@ -91,27 +91,29 @@
                     <ul class="space-y-0.5">
                         <x-sidebar-link route="customers.index" icon="users">Clients</x-sidebar-link>
                         <x-sidebar-link route="#" icon="box">Inventaires</x-sidebar-link>
-                        <x-sidebar-link route="#" icon="user-cog">Utilisateurs</x-sidebar-link>
+                        @role('manager')
+                            <x-sidebar-link route="users.index" icon="user-cog">Utilisateurs</x-sidebar-link>
+                        @endrole
                     </ul>
                 </div>
             </nav>
 
             <div class="px-3 py-4 border-t border-surface-dark">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2 flex-1 min-w-0">
                         <div class="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
                             <span class="text-primary font-semibold text-xs">
                                 {{ strtoupper(substr(Auth::user()->name, 0, 2)) }}
                             </span>
                         </div>
                         <div class="min-w-0">
-                            <p class="text-white text-xs font-medium truncate">{{ Auth::user()->name }}</p>
-                            <p class="text-secondary/60 text-[10px] capitalize">{{ Auth::user()->role ?? 'Admin' }}</p>
+                            <p class="text-white text-xs font-medium truncate">{{ \Illuminate\Support\Str::limit(Auth::user()->name, 13, '...') }}</p>
+                            <p class="text-secondary/60 text-[10px] capitalize truncate">{{ Auth::user()->role ?? 'Admin' }}</p>
                         </div>
                     </div>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
-                        <button type="submit" class="text-secondary/40 hover:text-secondary transition-colors">
+                        <button type="submit" class="inline-flex h-8 w-8 items-center justify-center flex-shrink-0 text-secondary/40 hover:text-secondary transition-colors">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
