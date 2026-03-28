@@ -1,4 +1,4 @@
-# Villa Boutanga PMS — Contexte du projet
+﻿# Villa Boutanga PMS — Contexte du projet
 
 ## Stack technique
 - Laravel 12, Blade, TailwindCSS v4, PostgreSQL
