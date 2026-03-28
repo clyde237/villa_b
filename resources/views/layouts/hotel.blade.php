@@ -98,6 +98,20 @@
                 </div>
             </nav>
 
+            <div class="px-3 pb-3">
+                @php $isDiscussionActive = request()->routeIs('discussions.*'); @endphp
+                <a id="sidebar-discussions-link"
+                   href="{{ route('discussions.index') }}"
+                   class="flex items-center justify-between gap-2.5 px-2 py-2 rounded-md text-xs font-medium transition-all {{ $isDiscussionActive ? 'bg-[#4a2a14] text-white' : 'text-[#c4a882] hover:bg-[#4a2a14] hover:text-white' }}">
+                    <span class="flex items-center gap-2.5 min-w-0">
+                        <i data-lucide="message-circle" class="w-3.5 h-3.5 flex-shrink-0"></i>
+                        <span class="truncate">Discussions</span>
+                    </span>
+                    <span id="sidebar-discussions-dot"
+                          class="h-2 w-2 rounded-full bg-secondary {{ !($hasUnreadDiscussions ?? false) ? 'hidden' : '' }}"></span>
+                </a>
+            </div>
+
             <div class="px-3 py-4 border-t border-surface-dark">
                 <div class="flex items-center justify-between gap-2">
                     <a href="{{ route('profile.edit') }}" class="flex items-center gap-2 flex-1 min-w-0 rounded-lg px-1 py-1 hover:bg-[#4a2a14] transition-colors">
@@ -165,6 +179,35 @@
         document.getElementById('mobile-sidebar-backdrop').classList.add('hidden');
         document.body.style.overflow = '';
     };
+
+    (function startDiscussionUnreadPolling() {
+        const dot = document.getElementById('sidebar-discussions-dot');
+        if (!dot) return;
+
+        const endpoint = '{{ route('discussions.unreadSummary') }}';
+
+        const refreshUnreadDot = async () => {
+            try {
+                const response = await fetch(endpoint, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+                if (!response.ok) return;
+
+                const payload = await response.json();
+                if (!payload || !payload.ok) return;
+
+                dot.classList.toggle('hidden', !payload.has_unread);
+            } catch (error) {
+                console.error('Unread summary polling failed', error);
+            }
+        };
+
+        refreshUnreadDot();
+        setInterval(refreshUnreadDot, 3000);
+    })();
     </script>
 
 </body>

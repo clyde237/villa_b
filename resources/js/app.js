@@ -1,7 +1,8 @@
 import './bootstrap';
 import { createIcons, icons } from 'lucide';
 
-// Initialise toutes les icônes au chargement
+window.refreshLucideIcons = () => createIcons({ icons });
+
 document.addEventListener('DOMContentLoaded', () => {
-    createIcons({ icons });
+    window.refreshLucideIcons();
 });
