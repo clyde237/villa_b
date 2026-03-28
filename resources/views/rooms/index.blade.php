@@ -14,17 +14,21 @@
         </p>
     </div>
     @if($tab === 'rooms')
+    @role('manager')
     <button onclick="document.getElementById('modal-create-room').classList.remove('hidden')"
         class="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-surface-dark transition-colors">
         <i data-lucide="plus" class="w-4 h-4"></i>
         Nouvelle chambre
     </button>
+    @endrole
     @else
+    @role('manager')
     <button onclick="document.getElementById('modal-create-type').classList.remove('hidden')"
         class="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-surface-dark transition-colors">
         <i data-lucide="plus" class="w-4 h-4"></i>
         Nouveau type
     </button>
+    @endrole
     @endif
 </div>
 
@@ -159,9 +163,23 @@
             </span>
         </div>
         <div class="col-span-2">
-            <span class="px-2.5 py-1 text-xs font-medium rounded-full bg-secondary/10 text-primary/60 border border-secondary/20">
-                ready
+            @if($room->activeHousekeepingAssignment)
+            <span class="px-2.5 py-1 text-xs font-medium rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200">
+                {{ $room->activeHousekeepingAssignment->team->name }}
             </span>
+            @elseif($room->status->value === 'dirty')
+            <span class="px-2.5 py-1 text-xs font-medium rounded-full bg-red-50 text-red-700 border border-red-200">
+                à affecter
+            </span>
+            @elseif(in_array($room->status->value, ['clean', 'inspected', 'available']))
+            <span class="px-2.5 py-1 text-xs font-medium rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                prêt
+            </span>
+            @else
+            <span class="px-2.5 py-1 text-xs font-medium rounded-full bg-secondary/10 text-primary/60 border border-secondary/20">
+                suivi manuel
+            </span>
+            @endif
         </div>
         <div class="col-span-1 flex items-center justify-end gap-1">
             <a href="{{ route('rooms.show', $room) }}"
@@ -169,6 +187,7 @@
                 title="Voir détail">
                 <i data-lucide="settings" class="w-4 h-4"></i>
             </a>
+            @role('manager')
             <button
                 data-id="{{ $room->id }}"
                 data-number="{{ $room->number }}"
@@ -181,12 +200,14 @@
                 <i data-lucide="pencil" class="w-4 h-4"></i>
             </button>
             <form method="POST" action="{{ route('rooms.destroy', $room) }}"
-                onsubmit="return confirm('Supprimer la chambre {{ $room->number }} ?')">
+                onsubmit="return confirm('Supprimer la chambre {{ $room->number }} ?')"
+                class="expect-popup">
                 @csrf @method('DELETE')
                 <button type="submit" class="p-1.5 text-primary/30 hover:text-red-500 transition-colors rounded" title="Supprimer">
                     <i data-lucide="trash-2" class="w-4 h-4"></i>
                 </button>
             </form>
+            @endrole
         </div>
     </div>
     @endforeach
@@ -265,7 +286,8 @@
                 <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
             </button>
             <form method="POST" action="{{ route('rooms.destroy', $room) }}"
-                onsubmit="return confirm('Supprimer la chambre {{ $room->number }} ?')">
+                onsubmit="return confirm('Supprimer la chambre {{ $room->number }} ?')"
+                class="expect-popup">
                 @csrf @method('DELETE')
                 <button type="submit" class="p-1.5 text-primary/30 hover:text-red-500 transition-colors rounded">
                     <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
@@ -320,7 +342,8 @@
                 <i data-lucide="pencil" class="w-4 h-4"></i>
             </button>
             <form method="POST" action="{{ route('rooms.types.destroy', $type) }}"
-                onsubmit="return confirm('Supprimer le type {{ $type->name }} ?')">
+                onsubmit="return confirm('Supprimer le type {{ $type->name }} ?')"
+                class="expect-popup">
                 @csrf @method('DELETE')
                 <button type="submit" class="p-1.5 text-primary/30 hover:text-red-500 transition-colors rounded">
                     <i data-lucide="trash-2" class="w-4 h-4"></i>
@@ -381,7 +404,7 @@
                 <i data-lucide="x" class="w-5 h-5"></i>
             </button>
         </div>
-        <form method="POST" action="{{ route('rooms.store') }}" class="px-6 py-5 space-y-4">
+        <form method="POST" action="{{ route('rooms.store') }}" class="px-6 py-5 space-y-4 expect-popup">
             @csrf
             <div>
                 <label class="modal-label">Type de chambre *</label>
@@ -439,7 +462,7 @@
                 <i data-lucide="x" class="w-5 h-5"></i>
             </button>
         </div>
-        <form id="form-edit-room" method="POST" action="" class="px-6 py-5 space-y-4">
+        <form id="form-edit-room" method="POST" action="" class="px-6 py-5 space-y-4 expect-popup">
             @csrf @method('PUT')
             <div>
                 <label class="modal-label">Type de chambre *</label>
@@ -492,7 +515,7 @@
                 <i data-lucide="x" class="w-5 h-5"></i>
             </button>
         </div>
-        <form method="POST" action="{{ route('rooms.types.store') }}" class="px-6 py-5 space-y-4">
+        <form method="POST" action="{{ route('rooms.types.store') }}" class="px-6 py-5 space-y-4 expect-popup">
             @csrf
             <div class="grid grid-cols-2 gap-4">
                 <div>
@@ -550,7 +573,7 @@
                 <i data-lucide="x" class="w-5 h-5"></i>
             </button>
         </div>
-        <form id="form-edit-type" method="POST" action="" class="px-6 py-5 space-y-4">
+        <form id="form-edit-type" method="POST" action="" class="px-6 py-5 space-y-4 expect-popup">
             @csrf @method('PUT')
             <div class="grid grid-cols-2 gap-4">
                 <div>

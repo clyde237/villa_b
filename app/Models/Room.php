@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -61,6 +62,18 @@ class Room extends Model
     public function bookings(): HasMany
     {
         return $this->hasMany(Booking::class);
+    }
+
+    public function housekeepingAssignments(): HasMany
+    {
+        return $this->hasMany(HousekeepingAssignment::class);
+    }
+
+    public function activeHousekeepingAssignment(): HasOne
+    {
+        return $this->hasOne(HousekeepingAssignment::class)
+            ->whereIn('status', ['pending', 'in_progress'])
+            ->latestOfMany();
     }
 
     /**

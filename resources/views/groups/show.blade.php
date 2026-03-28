@@ -35,6 +35,7 @@
 
     {{-- Actions globales --}}
     <div class="flex items-center gap-2">
+        @role('reception', 'manager')
         @if($groupBooking->status === 'confirmed')
         <form method="POST" action="{{ route('groups.checkInAll', $groupBooking) }}">
             @csrf
@@ -74,6 +75,7 @@
             Facture groupe
         </a>
         @endif
+        @endrole
     </div>
 </div>
 

@@ -52,7 +52,7 @@ class CheckOutService
 
             // 3. Met la chambre en "sale" (dirty)
             $booking->room->updateStatus(
-                RoomStatus::CLEANING,
+                RoomStatus::DIRTY,
                 "Check-out {$booking->booking_number}",
                 Auth::id()
             );

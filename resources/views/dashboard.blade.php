@@ -12,6 +12,31 @@
     </p>
 </div>
 
+{{-- Boutons d'administration --}}
+@admin
+<div class="mb-6">
+    <a href="/admin"
+       class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-surface-dark transition-colors">
+        <i data-lucide="settings" class="w-4 h-4"></i>
+        Administration
+    </a>
+</div>
+@endadmin
+
+{{-- Bouton de test popup --}}
+<div class="mb-6">
+    <button onclick="testPopup()"
+       class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors">
+        <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+        Tester le popup d'accès refusé
+    </button>
+    <a href="{{ route('test-popup') }}"
+       class="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition-colors ml-2">
+        <i data-lucide="external-link" class="w-4 h-4"></i>
+        Tester URL directe (admin requis)
+    </a>
+</div>
+
 {{-- 4 cartes statistiques --}}
 <div class="grid grid-cols-4 gap-4 mb-6">
 
@@ -51,6 +76,7 @@
         </div>
     </x-stat-card>
 
+    @role('housekeeping_leader', 'housekeeping_staff', 'housekeeping', 'manager', 'reception')
     <x-stat-card label="Housekeeping" :value="$stats['rooms_cleaning']" subtitle="chambre à nettoyer" color="purple">
         <x-slot name="icon">
             <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -58,6 +84,7 @@
             </svg>
         </x-slot>
     </x-stat-card>
+    @endrole
 
 </div>
 
@@ -159,5 +186,12 @@
     </div>
 
 </div>
+
+<script>
+function testPopup() {
+    console.log('Testing popup manually');
+    showAccessDeniedPopup('Ceci est un test du popup d\'accès refusé. Le système fonctionne !');
+}
+</script>
 
 @endsection
