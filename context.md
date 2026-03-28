@@ -363,3 +363,70 @@
 ### Impact
 - Le contrôleur Housekeeping se charge correctement.
 - Suppression de l’erreur fatale au chargement des routes/vues liées.
+
+## Module Discussions (Session 6) — EN COURS AVANCÉ ✅
+
+### Fonctionnalités livrées
+- Interface type messagerie desktop:
+  - colonne gauche: liste des conversations
+  - zone centrale: messages de la conversation active
+  - bouton flottant: démarrer une nouvelle discussion
+- Envoi de messages en AJAX + affichage instantané
+- Polling des nouveaux messages (sans rechargement)
+- Auto-scroll sur le dernier message lors des nouveaux messages
+- Compteurs non lus par conversation + point de notification dans la sidebar
+- Positionnement du lien Discussions en bas de sidebar (avant le profil)
+- État vide si aucune conversation sélectionnée:
+  - affichage "Selectionne une conversation"
+
+### Suppression de conversation (workflow demandé)
+- Menu options (3 points) par conversation:
+  - `Archiver`
+  - `Supprimer`
+- Popup de suppression avec 2 modes:
+  - `Juste pour moi`: masque la conversation pour l'utilisateur courant
+  - `Supprimer pour tous`: supprime la conversation des deux côtés
+- Actions en AJAX sans recharger la page
+- Si la conversation active est supprimée:
+  - l'écran repasse immédiatement sur l'état "Selectionne une conversation"
+
+### Correctifs importants appliqués
+- Correctif BOM UTF-8 sur `DiscussionController.php` (erreur namespace fatale éliminée)
+- Correctif duplication de message:
+  - garde anti-duplication côté front sur `data-message-id`
+- Correctif menu options qui disparaissait:
+  - la liste n'est plus rerendue tant qu'un menu est ouvert
+- Correctif réapparition après "supprimer pour moi":
+  - à chaque nouveau message, la conversation est réactivée pour les autres participants
+  - remise à `null` de `deleted_at` et `archived_at` côté pivot
+- Correctif rendu icônes Lucide après rerender dynamique:
+  - helper global `window.refreshLucideIcons()`
+
+### Migration de nettoyage ajoutée
+- `database/migrations/2026_03_28_172000_cleanup_discussion_deleted_archived_state.php`
+- Objectif:
+  - corriger les anciens états où `deleted_at` et `archived_at` étaient remplis ensemble
+  - conserver `deleted_at`
+  - remettre `archived_at` à `null`
+- Commande à exécuter localement:
+  - `php artisan migrate`
+
+### Fichiers discussion créés/modifiés
+- `app/Http/Controllers/DiscussionController.php`
+- `app/Models/DiscussionConversation.php`
+- `app/Models/DiscussionMessage.php`
+- `resources/views/discussions/index.blade.php`
+- `resources/js/app.js`
+- `routes/web.php`
+- `app/Models/User.php`
+- `app/Providers/AppServiceProvider.php`
+- `resources/views/layouts/hotel.blade.php`
+- Migrations:
+  - `2026_03_28_140000_create_discussion_messages_table.php`
+  - `2026_03_28_150000_create_discussion_conversations_table.php`
+  - `2026_03_28_150100_create_discussion_conversation_user_table.php`
+  - `2026_03_28_150200_add_conversation_id_to_discussion_messages_table.php`
+  - `2026_03_28_160000_add_last_read_at_to_discussion_conversation_user_table.php`
+  - `2026_03_28_170000_add_archived_at_to_discussion_conversation_user_table.php`
+  - `2026_03_28_171000_add_deleted_at_to_discussion_conversation_user_table.php`
+  - `2026_03_28_172000_cleanup_discussion_deleted_archived_state.php`
