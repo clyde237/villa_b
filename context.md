@@ -134,13 +134,13 @@
 - Groupe : annulation impossible si status in_house ou completed
 - Prestation groupe : label "(groupe GRP-XXXX)" ajouté à la description
 
-## Ce qu'il reste à  faire
+## Ce qu'il reste à faire
 
 ### Priorité haute
-- ✅ Middleware RBAC (limiter accès selon le rôle) — COMPLÈT
-- ✅ Système de Popup d'accès refusé — COMPLÈT
+- ✅ Middleware RBAC (limiter accès selon le rôle) — COMPLET
+- ✅ Système de Popup d'accès refusé — COMPLET
 - ✅ Module Utilisateurs (gestion staff par le manager) — COMPLET
-- ❌ Housekeeping complet (liste priorités, assignation staff)
+- ✅ Housekeeping complet (liste des priorités, assignation staff) — COMPLET
 
 ### Priorité moyenne
 - ❌ Module Restaurant (commandes, menu, lien folio)
@@ -253,10 +253,10 @@
 ## Correctif RBAC UI (Session 3)
 
 ### Problème rencontré
-- Après l'implémentation du RBAC, certaines cartes Blade conditionnelles n'étaient plus affichées.
+- Après l’implémentation du RBAC, certaines cartes Blade conditionnelles n’étaient plus affichées.
 - Symptômes observés :
   - la 4e carte du dashboard disparaissait pour `manager` et `reception`
-  - la carte "Changer le statut" sur le détail d'une chambre disparaissait aussi
+  - la carte "Changer le statut" sur le détail d’une chambre disparaissait aussi
 - La route de changement de statut était pourtant bien autorisée pour `manager,reception,housekeeping_leader,housekeeping_staff`.
 
 ### Cause racine
@@ -280,7 +280,7 @@
 
 ### Validation
 - Vérification du code effectuée sur les directives Blade et les vues impactées
-- Exécution des commandes Laravel non réalisée dans ce terminal car `php` n'est pas disponible dans le `PATH`
+- Exécution des commandes Laravel non réalisée dans ce terminal car `php` n’est pas disponible dans le `PATH`
 - Si un cache Blade persiste localement, exécuter `php artisan view:clear`
 
 ## Tests et validation
@@ -328,29 +328,38 @@
 - `app/Http/Requests/Auth/LoginRequest.php` (blocage compte inactif)
 
 
-## Module Profil (Session 6) - COMPLET
+## Housekeeping (Session 5) — COMPLET ✅
 
-### Fonctionnalites livrees
-- Nouvelle page `Mon profil` integree au layout hotel
-- Mise a jour des informations personnelles: nom, email, telephone
-- Changement de mot de passe depuis la meme page
-- Affichage des permissions utilisateur selon role (cartes de capacites)
-- Acces a la page profil depuis le bloc utilisateur de la sidebar
+### Fonctionnalités livrées
+- Liste prioritaire des chambres sales avec score d’urgence
+- Règles de priorité: bloquée (critique), arrivée aujourd’hui (haute), arrivée demain (élevée), fallback opérationnel
+- Affectation des chambres triées par priorité dans le formulaire manager/leader
+- Visualisation des priorités directement dans la liste d’assignation
 
-### Routes ajoutees
-- `GET /profile` -> `profile.edit`
-- `PATCH /profile` -> `profile.update`
-- `DELETE /profile` -> `profile.destroy`
-- `PUT /password` -> `password.update`
+### Sécurité et cohérence multi-tenant
+- Filtrage `tenant_id` renforcé sur les données housekeeping (équipes, assignations, pipeline, suivi)
+- Vérification tenant lors de l’assignation d’une équipe
+- Contrôle d’accès sur actions terrain (`clean`, `ready`, `issue`) :
+  - `manager` et `housekeeping_leader` autorisés globalement
+  - staff autorisé uniquement sur les chambres de son équipe
 
-### Regles et securite
-- Page accessible uniquement aux utilisateurs connectes et verifies
-- Validation telephone ajoutee dans `ProfileUpdateRequest`
-- Changement de mot de passe via verification du mot de passe actuel
+### Fichiers modifiés
+- `app/Http/Controllers/HousekeepingController.php`
+- `resources/views/housekeeping/index.blade.php`
 
-### Fichiers modifies
-- `routes/web.php`
-- `app/Http/Controllers/ProfileController.php`
-- `app/Http/Requests/ProfileUpdateRequest.php`
-- `resources/views/profile/edit.blade.php`
-- `resources/views/layouts/hotel.blade.php`
+## Correctif Incident (Session 5.1) — APPLIQUÉ ✅
+
+### Incident
+- Erreur fatale PHP sur HousekeepingController:
+  - `Namespace declaration statement has to be the very first statement`
+
+### Cause racine
+- Présence d’un BOM UTF-8 (`﻿`) avant `<?php` dans `app/Http/Controllers/HousekeepingController.php`.
+
+### Correctif
+- Réécriture du fichier en UTF-8 sans BOM.
+- Vérification binaire: le fichier commence désormais par `3C 3F 70` (`<?p`).
+
+### Impact
+- Le contrôleur Housekeeping se charge correctement.
+- Suppression de l’erreur fatale au chargement des routes/vues liées.
