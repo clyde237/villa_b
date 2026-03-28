@@ -134,9 +134,9 @@
 - Groupe : annulation impossible si status in_house ou completed
 - Prestation groupe : label "(groupe GRP-XXXX)" ajoutÃ© Ã  la description
 
-## Ce qu'il reste Ã  faire
+## Ce qu'il reste à  faire
 
-### PrioritÃ© haute
+### Priorité haute
 - âœ… Middleware RBAC (limiter accÃ¨s selon le rÃ´le) â€” COMPLÃˆT
 - âœ… SystÃ¨me de Popup d'accÃ¨s refusÃ© â€” COMPLÃˆT
 - âœ… Module Utilisateurs (gestion staff par le manager) â€” COMPLET
