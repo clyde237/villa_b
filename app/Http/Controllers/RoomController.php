@@ -18,7 +18,7 @@ class RoomController extends Controller
         $search = $request->get('search');
 
         // --- Données onglet Chambres ---
-        $roomsQuery = Room::with('roomType')->orderBy('floor')->orderBy('number');
+        $roomsQuery = Room::with(['roomType', 'activeHousekeepingAssignment.team'])->orderBy('floor')->orderBy('number');
 
         if ($status !== 'all') {
             $roomsQuery->where('status', $status);

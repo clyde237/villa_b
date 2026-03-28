@@ -10,11 +10,13 @@
         <h1 class="font-heading text-2xl font-semibold text-primary">Réservations</h1>
         <p class="text-sm text-primary/50 mt-0.5">{{ $stats['all'] }} réservation{{ $stats['all'] > 1 ? 's' : '' }} au total</p>
     </div>
+    @role('reception', 'manager')
     <a href="{{ route('bookings.create') }}"
        class="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-surface-dark transition-colors">
         <i data-lucide="plus" class="w-4 h-4"></i>
         Nouvelle réservation
     </a>
+    @endrole
 </div>
 
 {{-- Badges stats --}}
