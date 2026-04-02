@@ -24,6 +24,8 @@ class UserSeeder extends Seeder
             'reception',
             'housekeeping_leader',
             'housekeeping_staff',
+            'restaurant_chief',
+            'restaurant_staff',
         ])->get()->keyBy('slug');
 
         $admin = User::firstOrCreate(
@@ -73,6 +75,30 @@ class UserSeeder extends Seeder
             ]
         );
         $roles->get('housekeeping_leader')?->users()->syncWithoutDetaching([$housekeepingLeader->id]);
+
+        $restaurantChief = User::firstOrCreate(
+            ['email' => 'restaurant.chief@villaboutanga.cm'],
+            [
+                'name' => 'Chef Restaurant',
+                'password' => Hash::make('password'),
+                'tenant_id' => $tenant->id,
+                'role' => 'restaurant_chief',
+                'is_active' => true,
+            ]
+        );
+        $roles->get('restaurant_chief')?->users()->syncWithoutDetaching([$restaurantChief->id]);
+
+        $restaurantStaff = User::firstOrCreate(
+            ['email' => 'restaurant.staff@villaboutanga.cm'],
+            [
+                'name' => 'Serveur Restaurant',
+                'password' => Hash::make('password'),
+                'tenant_id' => $tenant->id,
+                'role' => 'restaurant_staff',
+                'is_active' => true,
+            ]
+        );
+        $roles->get('restaurant_staff')?->users()->syncWithoutDetaching([$restaurantStaff->id]);
 
         $staffMembers = [
             [

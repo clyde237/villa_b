@@ -12,6 +12,11 @@ use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\DiscussionController;
+use App\Http\Controllers\RestaurantMenuController;
+use App\Http\Controllers\RestaurantPortalController;
+use App\Http\Controllers\RestaurantOrderController;
+use App\Http\Controllers\RestaurantBillingController;
+use App\Http\Controllers\RestaurantPantryController;
 
 // ===== AUTH ROUTES (Breeze) =====
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -25,6 +30,13 @@ Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name
 // Page d'accueil → redirige vers le dashboard si connecté
 Route::get('/', function () {
     return redirect()->route('dashboard');
+});
+
+// ===== PORTAIL CLIENT (QR MENU) =====
+Route::prefix('portal')->name('portal.')->group(function () {
+    Route::get('/{tenant:slug}/restaurant', [RestaurantPortalController::class, 'menu'])->name('restaurant.menu');
+    Route::post('/{tenant:slug}/restaurant/orders', [RestaurantPortalController::class, 'store'])->name('restaurant.store');
+    Route::get('/{tenant:slug}/restaurant/orders/{order}', [RestaurantPortalController::class, 'order'])->whereNumber('order')->name('restaurant.order');
 });
 
 // Toutes les routes de l'app nécessitent d'être connecté et vérifié
@@ -118,6 +130,48 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{room}/clean',       [HousekeepingController::class, 'markCleaning'])->name('clean');
         Route::post('/{room}/ready',       [HousekeepingController::class, 'markReady'])->name('ready');
         Route::post('/{room}/issue',       [HousekeepingController::class, 'reportIssue'])->name('issue');
+    });
+
+    // --- RESTAURANT (menus) ---
+    Route::prefix('restaurant')->name('restaurant.')->middleware('role:manager,restaurant_chief,restaurant_staff')->group(function () {
+        Route::get('/menus', [RestaurantMenuController::class, 'index'])->name('menus.index');
+
+        // Commandes (staff)
+        Route::get('/orders', [RestaurantOrderController::class, 'index'])->name('orders.index');
+        Route::post('/orders', [RestaurantOrderController::class, 'store'])->name('orders.store');
+        Route::get('/orders/{order}', [RestaurantOrderController::class, 'show'])->whereNumber('order')->name('orders.show');
+        Route::post('/orders/{order}/status', [RestaurantOrderController::class, 'updateStatus'])->whereNumber('order')->name('orders.status');
+
+        // Garde-manger (inventaire restaurant)
+        Route::get('/pantry', [RestaurantPantryController::class, 'index'])->name('pantry.index');
+        Route::post('/pantry/items/{item}/movements', [RestaurantPantryController::class, 'storeMovement'])->name('pantry.movements.store');
+
+        Route::middleware('role:manager,restaurant_chief')->group(function () {
+            Route::post('/menus/categories', [RestaurantMenuController::class, 'storeCategory'])->name('menus.categories.store');
+            Route::put('/menus/categories/{category}', [RestaurantMenuController::class, 'updateCategory'])->name('menus.categories.update');
+            Route::delete('/menus/categories/{category}', [RestaurantMenuController::class, 'destroyCategory'])->name('menus.categories.destroy');
+
+            Route::post('/menus/items', [RestaurantMenuController::class, 'storeItem'])->name('menus.items.store');
+            Route::put('/menus/items/{item}', [RestaurantMenuController::class, 'updateItem'])->name('menus.items.update');
+            Route::delete('/menus/items/{item}', [RestaurantMenuController::class, 'destroyItem'])->name('menus.items.destroy');
+
+            Route::post('/pantry/categories', [RestaurantPantryController::class, 'storeCategory'])->name('pantry.categories.store');
+            Route::put('/pantry/categories/{category}', [RestaurantPantryController::class, 'updateCategory'])->name('pantry.categories.update');
+            Route::delete('/pantry/categories/{category}', [RestaurantPantryController::class, 'destroyCategory'])->name('pantry.categories.destroy');
+
+            Route::post('/pantry/items', [RestaurantPantryController::class, 'storeItem'])->name('pantry.items.store');
+            Route::put('/pantry/items/{item}', [RestaurantPantryController::class, 'updateItem'])->name('pantry.items.update');
+            Route::delete('/pantry/items/{item}', [RestaurantPantryController::class, 'destroyItem'])->name('pantry.items.destroy');
+        });
+    });
+
+    // --- RESTAURANT (facturation interne) ---
+    Route::prefix('restaurant')->name('restaurant.')->middleware('role:manager,restaurant_chief,cashier')->group(function () {
+        Route::get('/billing', [RestaurantBillingController::class, 'index'])->name('billing.index');
+        Route::get('/billing/{order}', [RestaurantBillingController::class, 'show'])->whereNumber('order')->name('billing.show');
+        Route::get('/billing/{order}/receipt', [RestaurantBillingController::class, 'receipt'])->whereNumber('order')->name('billing.receipt');
+        Route::post('/billing/{order}/paid', [RestaurantBillingController::class, 'markPaid'])->whereNumber('order')->name('billing.paid');
+        Route::post('/billing/{order}/unpaid', [RestaurantBillingController::class, 'markUnpaid'])->whereNumber('order')->name('billing.unpaid');
     });
 
     Route::prefix('invoices')->name('invoices.')->middleware('role:manager,reception,cashier')->group(function () {
