@@ -145,7 +145,7 @@
 - ✅ Housekeeping complet (liste des priorités, assignation staff) — COMPLET
 
 ### Priorité moyenne
-- 🟡 Module Restaurant (menus + commandes + portail QR) — EN COURS (reste: lien folio)
+- ✅ Module Restaurant (menus + commandes + facturation + portail QR + garde-manger + lien folio) — COMPLET (MVP)
 - ❌ Rapports (taux occupation, revenus, fidélité)
 - ❌ PDF facture via DomPDF
 
@@ -433,7 +433,7 @@
   - `2026_03_28_171000_add_deleted_at_to_discussion_conversation_user_table.php`
   - `2026_03_28_172000_cleanup_discussion_deleted_archived_state.php`
 
-## Module Restaurant (Session 7) — EN COURS AVANCÉ 🟡
+## Module Restaurant (Session 7) — COMPLET ✅
 
 ### Menus (back-office)
 - Gestion des catégories + articles (CRUD via modales)
@@ -458,8 +458,21 @@
   - suppression de commande non exposée (pas de route delete)
   - `table_number` obligatoire
 
+### Facturation restaurant (interne)
+- Accès: `manager`, `restaurant_chief`, `cashier`
+- Encaissement:
+  - `payment_status`: `unpaid|paid|refunded`
+  - `payment_method`: `cash|mobile_money|card|room_charge|other`
+- Reçu imprimable après paiement
+- Mode "Sur chambre" (résident):
+  - sélection d'un `booking` en `checked_in`
+  - création automatique d'un `FolioItem` de type `restaurant`
+  - inclus dans la facture finale au check-out (via `CheckOutService`)
+
 ### Lien Sidebar
-- Rubrique Restaurant: `Commandes`, `Menus`, `Portail (QR)` (ouvre le portail dans un nouvel onglet)
+- Rubrique Restaurant:
+  - `Commandes`, `Menus`, `Garde-manger`, `Portail (QR)` (ouvre le portail dans un nouvel onglet)
+  - `Facturation` (uniquement manager/chef/cashier)
 
 ### Données / tables
 - Menus:
@@ -468,6 +481,32 @@
 - Commandes portail/staff:
   - `restaurant_customer_orders` (avec `source` = `portal|staff`, `created_by`)
   - `restaurant_customer_order_items`
+- Facturation / liaison hôtel:
+  - `restaurant_customer_orders.booking_id` + `folio_item_id` (sur chambre)
+- Garde-manger:
+  - `restaurant_pantry_categories`
+  - `restaurant_pantry_items`
+  - `restaurant_pantry_movements`
+
+## Dashboard & Sidebar (Session 7.x) — APPLIQUÉ ✅
+
+### Dashboard personnalisé (par service)
+- Le dashboard n'est plus identique pour tous:
+  - Hôtel / Réception: arrivées, départs, in-house, occupation + panneaux réservations/statut chambres
+  - Housekeeping: cartes housekeeping + panneau "à surveiller"
+  - Restaurant: commandes en attente, à servir, impayées (si autorisé), stocks bas + dernières commandes
+  - Finance: CA resto du jour + solde hôtel (in-house)
+- Implémentation:
+  - `app/Http/Controllers/DashboardController.php` construit `cards` et `panels` selon le rôle
+  - `resources/views/dashboard.blade.php` affiche dynamiquement
+
+### Sidebar filtrée (par service)
+- La sidebar n'affiche que les onglets du service de l'utilisateur connecté:
+  - `Général`: dashboard toujours visible
+  - `Hôtel`: manager/reception/housekeeping
+  - `Restaurant`: manager/restaurant/cashier (avec Facturation réservée)
+  - `Gestion`: manager/reception/cashier
+- Fichier: `resources/views/layouts/hotel.blade.php`
 
 ### Seeders (comptes restaurant)
 - Ajout de comptes seedés:
