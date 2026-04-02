@@ -53,6 +53,14 @@
             <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h8M8 14h5m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
+        @elseif($icon === 'qr')
+            <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 6v-4h2v4h-2zm4 0v-2h2v2h-2zm-4-6v-2h2v2h-2zm4 2v-2h2v2h-2z"/>
+            </svg>
+        @elseif($icon === 'warehouse')
+            <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10l9-6 9 6v10a1 1 0 01-1 1h-5v-7H9v7H4a1 1 0 01-1-1V10z"/>
+            </svg>
         @endif
 
         {{ $slot }}
