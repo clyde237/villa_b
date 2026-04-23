@@ -134,136 +134,91 @@
     {{-- Pas encore de client sélectionné --}}
     @else
 
-        {{-- Recherche client existant --}}
+        {{-- Recherche et création client avec composant réutilisable --}}
         <div class="bg-white rounded-xl shadow-sm p-6 mb-4">
-            <h2 class="font-heading font-semibold text-primary mb-4">Rechercher un client existant</h2>
+            <h2 class="font-heading font-semibold text-primary mb-4">Rechercher un client</h2>
 
-            <form method="GET" action="{{ route('bookings.create') }}" class="relative mb-4">
-                <input type="text"
-                       id="search-input"
-                       name="search"
-                       value="{{ request('search') }}"
-                       placeholder="Nom, email, téléphone..."
-                       autocomplete="off"
-                       class="w-full pl-10 pr-4 py-2.5 text-sm border border-secondary/30 rounded-lg text-primary placeholder-primary/30 outline-none focus:border-secondary">
-                <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-primary/30"></i>
-            </form>
+            <x-customer-search 
+                :customers="$customers" 
+                name="customer_id_hidden" 
+                :value="old('customer_id')" 
+                :allow-creation="true"
+            >
+                <form method="POST" action="{{ route('bookings.store') }}">
+                    @csrf
+                    <input type="hidden" name="step" value="1">
+                    <input type="hidden" name="new_customer" value="1">
 
-            @if($customers->isNotEmpty())
-                <div class="space-y-2">
-                    @foreach($customers as $c)
-                        <form method="POST" action="{{ route('bookings.store') }}">
-                            @csrf
-                            <input type="hidden" name="step" value="1">
-                            <input type="hidden" name="customer_id" value="{{ $c->id }}">
-                            <button type="submit"
-                                    class="w-full flex items-center gap-3 p-3 rounded-lg border border-secondary/20 hover:border-secondary/50 hover:bg-accent/10 transition-colors text-left">
-                                <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                                    <span class="text-white text-xs font-semibold">
-                                        {{ strtoupper(substr($c->first_name, 0, 1) . substr($c->last_name, 0, 1)) }}
-                                    </span>
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-sm font-medium text-primary">{{ $c->full_name }}</p>
-                                    <p class="text-xs text-primary/50">{{ $c->email ?? $c->phone ?? '—' }}</p>
-                                </div>
-                                <span class="text-xs px-2 py-0.5 rounded-full bg-secondary/10 text-primary/60 capitalize">
-                                    {{ $c->loyalty_level }}
-                                </span>
-                            </button>
-                        </form>
-                    @endforeach
-                </div>
-            @elseif(request()->filled('search'))
-                <p class="text-sm text-primary/40 text-center py-4">Aucun client trouvé pour "{{ request('search') }}"</p>
-            @endif
+                    <div class="flex justify-between items-center bg-blue-50 text-blue-800 p-3 rounded-lg border border-blue-100 mb-4">
+                        <div class="flex items-center">
+                            <i data-lucide="user-plus" class="w-4 h-4 mr-2"></i>
+                            <span class="font-medium">Nouveau client</span>
+                        </div>
+                        <button type="button" @click="cancelCreatingNew()" class="text-sm font-medium hover:underline">Annuler</button>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-widest text-primary/50 mb-1.5">Prénom *</label>
+                            <input type="text" name="first_name" x-model="customerFirstName" required
+                                   class="w-full px-3 py-2 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-widest text-primary/50 mb-1.5">Nom *</label>
+                            <input type="text" name="last_name" x-model="customerName" required
+                                   class="w-full px-3 py-2 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-widest text-primary/50 mb-1.5">Email</label>
+                            <input type="email" name="email"
+                                   class="w-full px-3 py-2 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-widest text-primary/50 mb-1.5">Téléphone</label>
+                            <input type="text" name="phone" x-model="customerPhone"
+                                   class="w-full px-3 py-2 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mb-5">
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-widest text-primary/50 mb-1.5">Nationalité</label>
+                            <input type="text" name="nationality" placeholder="CM" maxlength="5"
+                                   class="w-full px-3 py-2 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-widest text-primary/50 mb-1.5">Type document</label>
+                            <select name="id_document_type"
+                                    class="w-full px-3 py-2 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary">
+                                <option value="">Sélectionner...</option>
+                                <option value="passport">Passeport</option>
+                                <option value="id_card">Carte d'identité</option>
+                                <option value="driver_license">Permis de conduire</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-surface-dark transition-colors flex items-center justify-center gap-2">
+                        Créer le client et continuer
+                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </button>
+                </form>
+
+                <x-slot:selectedActions>
+                    <form method="POST" action="{{ route('bookings.store') }}">
+                        @csrf
+                        <input type="hidden" name="step" value="1">
+                        <input type="hidden" name="customer_id" :value="customerId">
+                        <button type="submit" class="w-full py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-surface-dark transition-colors flex items-center justify-center gap-2">
+                            Continuer avec ce client
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </button>
+                    </form>
+                </x-slot:selectedActions>
+            </x-customer-search>
         </div>
-
-        {{-- Séparateur --}}
-        <div class="flex items-center gap-4 mb-4">
-            <div class="flex-1 h-px bg-secondary/20"></div>
-            <span class="text-xs text-primary/40 font-medium">ou créer un nouveau client</span>
-            <div class="flex-1 h-px bg-secondary/20"></div>
-        </div>
-
-        {{-- Formulaire nouveau client --}}
-        <div class="bg-white rounded-xl shadow-sm p-6">
-            <h2 class="font-heading font-semibold text-primary mb-4">Nouveau client</h2>
-
-            <form method="POST" action="{{ route('bookings.store') }}">
-                @csrf
-                <input type="hidden" name="step" value="1">
-                <input type="hidden" name="new_customer" value="1">
-
-                <div class="grid grid-cols-2 gap-4 mb-4">
-                    <div>
-                        <label class="block text-xs font-semibold uppercase tracking-widest text-primary/50 mb-1.5">Prénom *</label>
-                        <input type="text" name="first_name" value="{{ old('first_name') }}" required
-                               class="w-full px-3 py-2 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary">
-                        @error('first_name')
-                            <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
-                        @enderror
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold uppercase tracking-widest text-primary/50 mb-1.5">Nom *</label>
-                        <input type="text" name="last_name" value="{{ old('last_name') }}" required
-                               class="w-full px-3 py-2 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary">
-                        @error('last_name')
-                            <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
-                        @enderror
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4 mb-4">
-                    <div>
-                        <label class="block text-xs font-semibold uppercase tracking-widest text-primary/50 mb-1.5">Email</label>
-                        <input type="email" name="email" value="{{ old('email') }}"
-                               class="w-full px-3 py-2 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold uppercase tracking-widest text-primary/50 mb-1.5">Téléphone</label>
-                        <input type="text" name="phone" value="{{ old('phone') }}"
-                               class="w-full px-3 py-2 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary">
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4 mb-5">
-                    <div>
-                        <label class="block text-xs font-semibold uppercase tracking-widest text-primary/50 mb-1.5">Nationalité</label>
-                        <input type="text" name="nationality" placeholder="CM" value="{{ old('nationality') }}" maxlength="5"
-                               class="w-full px-3 py-2 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold uppercase tracking-widest text-primary/50 mb-1.5">Type document</label>
-                        <select name="id_document_type"
-                                class="w-full px-3 py-2 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary">
-                            <option value="">Sélectionner...</option>
-                            <option value="passport">Passeport</option>
-                            <option value="id_card">Carte d'identité</option>
-                            <option value="driver_license">Permis de conduire</option>
-                        </select>
-                    </div>
-                </div>
-
-                <button type="submit"
-                        class="w-full py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-surface-dark transition-colors flex items-center justify-center gap-2">
-                    Créer le client et continuer
-                    <i data-lucide="arrow-right" class="w-4 h-4"></i>
-                </button>
-            </form>
-        </div>
-    @endif
-</div>
-
-<script>
-let searchTimer;
-const searchInput = document.getElementById('search-input');
-if (searchInput) {
-    searchInput.addEventListener('input', function() {
-        clearTimeout(searchTimer);
-        searchTimer = setTimeout(() => this.closest('form').submit(), 400);
-    });
-}
-</script>
 
 @endsection

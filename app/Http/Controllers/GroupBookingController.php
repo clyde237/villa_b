@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Enums\BookingStatus;
+use App\Enums\RoomStatus;
 use App\Models\Booking;
 use App\Models\Customer;
 use App\Models\FolioItem;
 use App\Models\GroupBooking;
+use App\Models\Payment;
 use App\Models\Room;
 use App\Models\RoomType;
 use App\Models\Tenant;
@@ -35,9 +37,8 @@ class GroupBookingController extends Controller
                     ->orWhere('group_name', 'ilike', "%{$search}%")
                     ->orWhereHas(
                         'contactCustomer',
-                        fn($cq) =>
-                        $cq->where('first_name', 'ilike', "%{$search}%")
-                            ->orWhere('last_name',  'ilike', "%{$search}%")
+                        fn ($cq) => $cq->where('first_name', 'ilike', "%{$search}%")
+                            ->orWhere('last_name', 'ilike', "%{$search}%")
                     );
             });
         }
@@ -47,10 +48,10 @@ class GroupBookingController extends Controller
         }
 
         $stats = [
-            'total'      => GroupBooking::count(),
-            'pending'    => GroupBooking::where('status', 'pending')->count(),
-            'confirmed'  => GroupBooking::where('status', 'confirmed')->count(),
-            'in_house'   => GroupBooking::where('status', 'in_house')->count(),
+            'total' => GroupBooking::count(),
+            'pending' => GroupBooking::where('status', 'pending')->count(),
+            'confirmed' => GroupBooking::where('status', 'confirmed')->count(),
+            'in_house' => GroupBooking::where('status', 'in_house')->count(),
         ];
 
         $groups = $query->orderBy('start_date', 'desc')->paginate(20)->withQueryString();
@@ -62,16 +63,7 @@ class GroupBookingController extends Controller
 
     public function create(Request $request)
     {
-        $customers = collect();
-
-        if ($request->filled('search')) {
-            $customers = Customer::where(function ($q) use ($request) {
-                $search = $request->search;
-                $q->where('first_name', 'ilike', "%{$search}%")
-                    ->orWhere('last_name',  'ilike', "%{$search}%")
-                    ->orWhere('phone',      'ilike', "%{$search}%");
-            })->limit(10)->get();
-        }
+        $customers = Customer::orderBy('last_name')->orderBy('first_name')->get();
 
         return view('groups.create', compact('customers'));
     }
@@ -80,11 +72,11 @@ class GroupBookingController extends Controller
     {
         $validated = $request->validate([
             'contact_customer_id' => ['required', 'exists:customers,id'],
-            'group_name'          => ['required', 'string', 'max:255'],
-            'event_type'          => ['required', 'string', 'in:family,corporate,wedding,tour_group'],
-            'start_date'          => ['required', 'date', 'after_or_equal:today'],
-            'end_date'            => ['required', 'date', 'after:start_date'],
-            'notes'               => ['nullable', 'string'],
+            'group_name' => ['required', 'string', 'max:255'],
+            'event_type' => ['required', 'string', 'in:family,corporate,wedding,tour_group'],
+            'start_date' => ['required', 'date', 'after_or_equal:today'],
+            'end_date' => ['required', 'date', 'after:start_date'],
+            'notes' => ['nullable', 'string'],
         ]);
 
         $tenantId = Auth::user()->tenant_id
@@ -95,13 +87,13 @@ class GroupBookingController extends Controller
             ->where('tenant_id', $tenantId)
             ->whereYear('created_at', now()->year)
             ->orderBy('id', 'desc')->first();
-        $seq       = $lastGroup ? (int) substr($lastGroup->group_code, -4) + 1 : 1;
+        $seq = $lastGroup ? (int) substr($lastGroup->group_code, -4) + 1 : 1;
         $groupCode = sprintf('GRP-%d-%04d', now()->year, $seq);
 
         $group = GroupBooking::create(array_merge($validated, [
-            'tenant_id'  => $tenantId,
+            'tenant_id' => $tenantId,
             'group_code' => $groupCode,
-            'status'     => 'pending',
+            'status' => 'pending',
         ]));
 
         return redirect()
@@ -137,10 +129,10 @@ class GroupBookingController extends Controller
 
         // Totaux du groupe
         $totals = [
-            'rooms'       => $groupBooking->bookings->count(),
-            'nights'      => $groupBooking->bookings->sum('total_nights'),
-            'total'       => $groupBooking->bookings->sum('total_amount'),
-            'paid'        => $groupBooking->bookings->sum('paid_amount'),
+            'rooms' => $groupBooking->bookings->count(),
+            'nights' => $groupBooking->bookings->sum('total_nights'),
+            'total' => $groupBooking->bookings->sum('total_amount'),
+            'paid' => $groupBooking->bookings->sum('paid_amount'),
             'balance_due' => $groupBooking->bookings->sum('balance_due'),
         ];
 
@@ -152,17 +144,17 @@ class GroupBookingController extends Controller
     public function addRoom(Request $request, GroupBooking $groupBooking)
     {
         $validated = $request->validate([
-            'room_id'        => ['required', 'exists:rooms,id'],
-            'customer_id'    => ['required', 'exists:customers,id'],
-            'adults_count'   => ['required', 'integer', 'min:1'],
+            'room_id' => ['required', 'exists:rooms,id'],
+            'customer_id' => ['required', 'exists:customers,id'],
+            'adults_count' => ['required', 'integer', 'min:1'],
             'children_count' => ['nullable', 'integer', 'min:0'],
-            'notes'          => ['nullable', 'string'],
+            'notes' => ['nullable', 'string'],
         ]);
 
-        $room     = Room::with('roomType')->findOrFail($validated['room_id']);
-        $checkIn  = $groupBooking->start_date;
+        $room = Room::with('roomType')->findOrFail($validated['room_id']);
+        $checkIn = $groupBooking->start_date;
         $checkOut = $groupBooking->end_date;
-        $nights   = $checkIn->diffInDays($checkOut);
+        $nights = $checkIn->diffInDays($checkOut);
 
         // Vérifie disponibilité
         $conflict = Booking::where('room_id', $room->id)
@@ -170,7 +162,7 @@ class GroupBookingController extends Controller
             ->where(function ($q) use ($checkIn, $checkOut) {
                 $q->whereBetween('check_in', [$checkIn, $checkOut])
                     ->orWhereBetween('check_out', [$checkIn, $checkOut])
-                    ->orWhere(fn($sq) => $sq->where('check_in', '<=', $checkIn)
+                    ->orWhere(fn ($sq) => $sq->where('check_in', '<=', $checkIn)
                         ->where('check_out', '>=', $checkOut));
             })->exists();
 
@@ -178,12 +170,12 @@ class GroupBookingController extends Controller
             return back()->withErrors(['room_id' => 'Cette chambre est déjà réservée sur cette période.']);
         }
 
-        $tenantId        = Auth::user()->tenant_id
+        $tenantId = Auth::user()->tenant_id
             ?? Tenant::where('slug', 'villa-boutanga')->value('id');
-        $pricePerNight   = $room->roomType->base_price;
+        $pricePerNight = $room->roomType->base_price;
         $totalRoomAmount = $nights * $pricePerNight;
-        $taxAmount       = (int) round($totalRoomAmount * 0.1925);
-        $totalAmount     = $totalRoomAmount + $taxAmount;
+        $taxAmount = (int) round($totalRoomAmount * 0.1925);
+        $totalAmount = $totalRoomAmount + $taxAmount;
 
         DB::transaction(function () use (
             $groupBooking,
@@ -199,39 +191,39 @@ class GroupBookingController extends Controller
             $totalAmount
         ) {
             $booking = Booking::create([
-                'tenant_id'        => $tenantId,
+                'tenant_id' => $tenantId,
                 'group_booking_id' => $groupBooking->id,
-                'room_id'          => $room->id,
-                'customer_id'      => $validated['customer_id'],
-                'status'           => BookingStatus::CONFIRMED,
-                'check_in'         => $checkIn,
-                'check_out'        => $checkOut,
-                'adults_count'     => $validated['adults_count'],
-                'children_count'   => $validated['children_count'] ?? 0,
-                'total_nights'     => $nights,
-                'price_per_night'  => $pricePerNight,
+                'room_id' => $room->id,
+                'customer_id' => $validated['customer_id'],
+                'status' => BookingStatus::CONFIRMED,
+                'check_in' => $checkIn,
+                'check_out' => $checkOut,
+                'adults_count' => $validated['adults_count'],
+                'children_count' => $validated['children_count'] ?? 0,
+                'total_nights' => $nights,
+                'price_per_night' => $pricePerNight,
                 'total_room_amount' => $totalRoomAmount,
-                'extras_amount'    => 0,
-                'tax_amount'       => $taxAmount,
-                'discount_amount'  => 0,
-                'total_amount'     => $totalAmount,
-                'deposit_amount'   => 0,
-                'paid_amount'      => 0,
-                'balance_due'      => $totalAmount,
-                'source'           => 'group',
-                'notes'            => $validated['notes'] ?? null,
-                'created_by'       => Auth::id(),
+                'extras_amount' => 0,
+                'tax_amount' => $taxAmount,
+                'discount_amount' => 0,
+                'total_amount' => $totalAmount,
+                'deposit_amount' => 0,
+                'paid_amount' => 0,
+                'balance_due' => $totalAmount,
+                'source' => 'group',
+                'notes' => $validated['notes'] ?? null,
+                'created_by' => Auth::id(),
             ]);
 
             // Ligne folio hébergement
             FolioItem::create([
-                'tenant_id'   => $tenantId,
-                'booking_id'  => $booking->id,
+                'tenant_id' => $tenantId,
+                'booking_id' => $booking->id,
                 'customer_id' => $booking->customer_id,
-                'type'        => FolioItem::TYPE_ROOM,
+                'type' => FolioItem::TYPE_ROOM,
                 'description' => "Hébergement {$nights} nuit(s) — Chambre {$room->number}",
-                'quantity'    => $nights,
-                'unit_price'  => $pricePerNight,
+                'quantity' => $nights,
+                'unit_price' => $pricePerNight,
                 'total_price' => $totalRoomAmount,
                 'earns_points' => true,
                 'occurred_at' => now(),
@@ -257,7 +249,7 @@ class GroupBookingController extends Controller
             abort(403);
         }
 
-        if (!$booking->isEditable()) {
+        if (! $booking->isEditable()) {
             return back()->withErrors(['remove' => 'Cette réservation ne peut plus être retirée.']);
         }
 
@@ -282,13 +274,13 @@ class GroupBookingController extends Controller
         DB::transaction(function () use ($groupBooking, $confirmed) {
             foreach ($confirmed as $booking) {
                 $booking->update([
-                    'status'          => BookingStatus::CHECKED_IN,
+                    'status' => BookingStatus::CHECKED_IN,
                     'actual_check_in' => now(),
-                    'checked_in_by'   => Auth::id(),
+                    'checked_in_by' => Auth::id(),
                 ]);
 
                 $booking->room->updateStatus(
-                    \App\Enums\RoomStatus::OCCUPIED,
+                    RoomStatus::OCCUPIED,
                     "Check-in groupe {$groupBooking->group_code}",
                     Auth::id()
                 );
@@ -318,7 +310,7 @@ class GroupBookingController extends Controller
         $unsettled = $checkedIn->where('balance_due', '>', 0);
         if ($unsettled->isNotEmpty()) {
             return back()->withErrors([
-                'checkout' => "{$unsettled->count()} chambre(s) ont un solde impayé. Réglez avant le check-out."
+                'checkout' => "{$unsettled->count()} chambre(s) ont un solde impayé. Réglez avant le check-out.",
             ]);
         }
 
@@ -331,7 +323,7 @@ class GroupBookingController extends Controller
             }
         }
 
-        if (!empty($errors)) {
+        if (! empty($errors)) {
             return back()->withErrors(['checkout' => implode(' | ', $errors)]);
         }
 
@@ -345,13 +337,13 @@ class GroupBookingController extends Controller
     public function addGroupFolioItem(Request $request, GroupBooking $groupBooking)
     {
         $validated = $request->validate([
-            'type'             => ['required', 'string'],
-            'description'      => ['required', 'string', 'max:255'],
-            'quantity'         => ['required', 'numeric', 'min:0.5'],
-            'unit_price'       => ['required', 'integer', 'min:0'],
+            'type' => ['required', 'string'],
+            'description' => ['required', 'string', 'max:255'],
+            'quantity' => ['required', 'numeric', 'min:0.5'],
+            'unit_price' => ['required', 'integer', 'min:0'],
             'is_complimentary' => ['boolean'],
-            'split_mode'       => ['required', 'in:per_room,per_person,global'],
-            'notes'            => ['nullable', 'string'],
+            'split_mode' => ['required', 'in:per_room,per_person,global'],
+            'notes' => ['nullable', 'string'],
         ]);
 
         // Uniquement si le groupe est en séjour
@@ -400,42 +392,42 @@ class GroupBookingController extends Controller
                 };
 
                 $unitForLine = match ($validated['split_mode']) {
-                    'per_room'   => $validated['unit_price'] * 100,
+                    'per_room' => $validated['unit_price'] * 100,
                     'per_person' => $validated['unit_price'] * 100,
-                    'global'     => (int) round(($validated['unit_price'] * 100) / $bookings->count()),
+                    'global' => (int) round(($validated['unit_price'] * 100) / $bookings->count()),
                 };
 
                 FolioItem::create([
-                    'tenant_id'        => $tenantId,
-                    'booking_id'       => $booking->id,
-                    'customer_id'      => $booking->customer_id,
-                    'type'             => $validated['type'],
-                    'description'      => $validated['description'] . " (groupe {$groupBooking->group_code})",
-                    'quantity'         => $validated['quantity'],
-                    'unit_price'       => $unitForLine,
-                    'total_price'      => $linePrice,
+                    'tenant_id' => $tenantId,
+                    'booking_id' => $booking->id,
+                    'customer_id' => $booking->customer_id,
+                    'type' => $validated['type'],
+                    'description' => $validated['description']." (groupe {$groupBooking->group_code})",
+                    'quantity' => $validated['quantity'],
+                    'unit_price' => $unitForLine,
+                    'total_price' => $linePrice,
                     'is_complimentary' => $isComplimentary,
-                    'earns_points'     => !$isComplimentary,
-                    'occurred_at'      => now(),
-                    'recorded_by'      => Auth::id(),
-                    'notes'            => $validated['notes'] ?? null,
+                    'earns_points' => ! $isComplimentary,
+                    'occurred_at' => now(),
+                    'recorded_by' => Auth::id(),
+                    'notes' => $validated['notes'] ?? null,
                 ]);
 
                 // Recalcule le solde de chaque booking
-                if (!$isComplimentary) {
+                if (! $isComplimentary) {
                     $extrasAmount = $booking->folioItems()
                         ->whereNotIn('type', [FolioItem::TYPE_ROOM, FolioItem::TYPE_PAYMENT, FolioItem::TYPE_DISCOUNT])
                         ->where('is_complimentary', false)
                         ->sum('total_price');
 
-                    $taxAmount   = (int) round(($booking->total_room_amount + $extrasAmount) * 0.1925);
+                    $taxAmount = (int) round(($booking->total_room_amount + $extrasAmount) * 0.1925);
                     $totalAmount = $booking->total_room_amount + $extrasAmount + $taxAmount;
 
                     $booking->update([
                         'extras_amount' => $extrasAmount,
-                        'tax_amount'    => $taxAmount,
-                        'total_amount'  => $totalAmount,
-                        'balance_due'   => max(0, $totalAmount - $booking->paid_amount),
+                        'tax_amount' => $taxAmount,
+                        'total_amount' => $totalAmount,
+                        'balance_due' => max(0, $totalAmount - $booking->paid_amount),
                     ]);
                 }
             }
@@ -449,10 +441,10 @@ class GroupBookingController extends Controller
     public function addGroupPayment(Request $request, GroupBooking $groupBooking)
     {
         $validated = $request->validate([
-            'amount'       => ['required', 'integer', 'min:1'],
-            'method'       => ['required', 'string', 'in:cash,stripe,orange_money,mtn_momo,bank_transfer'],
+            'amount' => ['required', 'integer', 'min:1'],
+            'method' => ['required', 'string', 'in:cash,stripe,orange_money,mtn_momo,bank_transfer'],
             'distribution' => ['required', 'in:proportional,equal'],
-            'notes'        => ['nullable', 'string'],
+            'notes' => ['nullable', 'string'],
         ]);
 
         $bookings = $groupBooking->bookings()
@@ -464,9 +456,9 @@ class GroupBookingController extends Controller
             return back()->withErrors(['payment' => 'Aucune chambre avec un solde impayé.']);
         }
 
-        $tenantId       = Auth::user()->tenant_id
+        $tenantId = Auth::user()->tenant_id
             ?? Tenant::where('slug', 'villa-boutanga')->value('id');
-        $totalCentimes  = $validated['amount'] * 100;
+        $totalCentimes = $validated['amount'] * 100;
         $totalBalanceDue = $bookings->sum('balance_due');
 
         if ($totalCentimes > $totalBalanceDue + 100) {
@@ -484,7 +476,9 @@ class GroupBookingController extends Controller
             $remaining = $totalCentimes;
 
             foreach ($bookings as $index => $booking) {
-                if ($remaining <= 0) break;
+                if ($remaining <= 0) {
+                    break;
+                }
 
                 // Calcul de la part de ce booking
                 $share = match ($validated['distribution']) {
@@ -501,31 +495,33 @@ class GroupBookingController extends Controller
                 }
 
                 $share = min($share, $booking->balance_due, $remaining);
-                if ($share <= 0) continue;
+                if ($share <= 0) {
+                    continue;
+                }
 
                 // Génère référence paiement
-                $lastPayment = \App\Models\Payment::withoutGlobalScopes()
+                $lastPayment = Payment::withoutGlobalScopes()
                     ->where('tenant_id', $tenantId)
                     ->orderBy('id', 'desc')->first();
                 $seq = $lastPayment ? (int) substr($lastPayment->reference, -6) + 1 : 1;
                 $reference = sprintf('PAY-%d-%06d', now()->year, $seq);
 
-                \App\Models\Payment::create([
-                    'tenant_id'    => $tenantId,
-                    'booking_id'   => $booking->id,
-                    'customer_id'  => $booking->customer_id,
-                    'amount'       => $share,
-                    'currency'     => 'XAF',
-                    'method'       => $validated['method'],
-                    'status'       => 'completed',
-                    'reference'    => $reference,
-                    'paid_at'      => now(),
+                Payment::create([
+                    'tenant_id' => $tenantId,
+                    'booking_id' => $booking->id,
+                    'customer_id' => $booking->customer_id,
+                    'amount' => $share,
+                    'currency' => 'XAF',
+                    'method' => $validated['method'],
+                    'status' => 'completed',
+                    'reference' => $reference,
+                    'paid_at' => now(),
                     'processed_by' => Auth::id(),
-                    'notes'        => ($validated['notes'] ?? '') . " — Paiement groupe {$groupBooking->group_code}",
+                    'notes' => ($validated['notes'] ?? '')." — Paiement groupe {$groupBooking->group_code}",
                 ]);
 
                 // Met à jour le solde du booking
-                $newPaid      = $booking->paid_amount + $share;
+                $newPaid = $booking->paid_amount + $share;
                 $newBalanceDue = max(0, $booking->total_amount - $newPaid);
 
                 $booking->update([
@@ -543,8 +539,8 @@ class GroupBookingController extends Controller
 
         return redirect()
             ->route('groups.show', $groupBooking)
-            ->with('success', 'Paiement groupe enregistré. Solde restant : ' .
-                number_format($newTotalBalance / 100, 0, ',', ' ') . ' FCFA');
+            ->with('success', 'Paiement groupe enregistré. Solde restant : '.
+                number_format($newTotalBalance / 100, 0, ',', ' ').' FCFA');
     }
 
     public function invoice(GroupBooking $groupBooking)
@@ -558,15 +554,15 @@ class GroupBookingController extends Controller
             'bookings.invoice',
         ]);
 
-        $tenant = \App\Models\Tenant::find($groupBooking->tenant_id);
+        $tenant = Tenant::find($groupBooking->tenant_id);
 
         $totals = [
-            'rooms'       => $groupBooking->bookings->count(),
-            'nights'      => $groupBooking->bookings->sum('total_nights'),
-            'subtotal'    => $groupBooking->bookings->sum('total_room_amount') + $groupBooking->bookings->sum('extras_amount'),
-            'tax'         => $groupBooking->bookings->sum('tax_amount'),
-            'total'       => $groupBooking->bookings->sum('total_amount'),
-            'paid'        => $groupBooking->bookings->sum('paid_amount'),
+            'rooms' => $groupBooking->bookings->count(),
+            'nights' => $groupBooking->bookings->sum('total_nights'),
+            'subtotal' => $groupBooking->bookings->sum('total_room_amount') + $groupBooking->bookings->sum('extras_amount'),
+            'tax' => $groupBooking->bookings->sum('tax_amount'),
+            'total' => $groupBooking->bookings->sum('total_amount'),
+            'paid' => $groupBooking->bookings->sum('paid_amount'),
             'balance_due' => $groupBooking->bookings->sum('balance_due'),
         ];
 
@@ -598,11 +594,11 @@ class GroupBookingController extends Controller
 
         $validated = $request->validate([
             'contact_customer_id' => ['required', 'exists:customers,id'],
-            'group_name'          => ['required', 'string', 'max:255'],
-            'event_type'          => ['required', 'string', 'in:family,corporate,wedding,tour_group'],
-            'start_date'          => ['required', 'date'],
-            'end_date'            => ['required', 'date', 'after:start_date'],
-            'notes'               => ['nullable', 'string'],
+            'group_name' => ['required', 'string', 'max:255'],
+            'event_type' => ['required', 'string', 'in:family,corporate,wedding,tour_group'],
+            'start_date' => ['required', 'date'],
+            'end_date' => ['required', 'date', 'after:start_date'],
+            'notes' => ['nullable', 'string'],
         ]);
 
         // Si des chambres sont déjà en checked_in, on bloque le changement de dates
@@ -615,7 +611,7 @@ class GroupBookingController extends Controller
             $validated['end_date'] !== $groupBooking->end_date->format('Y-m-d')
         )) {
             return back()->withErrors([
-                'start_date' => 'Les dates ne peuvent pas être modifiées car des chambres sont déjà en séjour.'
+                'start_date' => 'Les dates ne peuvent pas être modifiées car des chambres sont déjà en séjour.',
             ])->withInput();
         }
 

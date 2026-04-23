@@ -17,6 +17,9 @@ use App\Http\Controllers\RestaurantPortalController;
 use App\Http\Controllers\RestaurantOrderController;
 use App\Http\Controllers\RestaurantBillingController;
 use App\Http\Controllers\RestaurantPantryController;
+use App\Http\Controllers\ShopProductController;
+use App\Http\Controllers\ShopOrderController;
+use App\Http\Controllers\Shop\CashRegisterController;
 
 // ===== AUTH ROUTES (Breeze) =====
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -194,6 +197,36 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Route::get('/reports', [ReportsController::class, 'index'])->name('reports');
         // Route::get('/budgets', [BudgetsController::class, 'index'])->name('budgets');
         // etc.
+    });
+
+    // --- SHOP ---
+    Route::prefix('shop')->name('shop.')->middleware('role:shop_manager,shop_cashier')->group(function () {
+        // Gestion de la Caisse
+        Route::get('/cash-register', [CashRegisterController::class, 'index'])->middleware('role:shop_manager')->name('cash_register.index');
+        Route::get('/cash-register/open', [CashRegisterController::class, 'showOpenForm'])->name('cash_register.open');
+        Route::post('/cash-register/open', [CashRegisterController::class, 'open'])->name('cash_register.open.store');
+        Route::get('/cash-register/close', [CashRegisterController::class, 'showCloseForm'])->name('cash_register.close');
+        Route::post('/cash-register/close', [CashRegisterController::class, 'close'])->name('cash_register.close.store');
+        Route::post('/cash-register/disbursements', [CashRegisterController::class, 'storeDisbursement'])->name('cash_register.disbursements.store');
+
+        // Gestion des articles (shop_manager uniquement)
+        Route::middleware('role:shop_manager')->group(function () {
+            Route::get('/products', [ShopProductController::class, 'index'])->name('products.index');
+            Route::get('/products/create', [ShopProductController::class, 'create'])->name('products.create');
+            Route::post('/products', [ShopProductController::class, 'store'])->name('products.store');
+            Route::get('/products/{product}/edit', [ShopProductController::class, 'edit'])->name('products.edit');
+            Route::patch('/products/{product}', [ShopProductController::class, 'update'])->name('products.update');
+            Route::delete('/products/{product}', [ShopProductController::class, 'destroy'])->name('products.destroy');
+        });
+
+        // Gestion des commandes (shop_manager et shop_cashier)
+        Route::get('/orders', [ShopOrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/create', [ShopOrderController::class, 'create'])->name('orders.create');
+        Route::post('/orders', [ShopOrderController::class, 'store'])->name('orders.store');
+        Route::get('/orders/{order}/receipt', [ShopOrderController::class, 'receipt'])->name('orders.receipt');
+        Route::get('/orders/{order}', [ShopOrderController::class, 'show'])->name('orders.show');
+        Route::patch('/orders/{order}/paid', [ShopOrderController::class, 'markAsPaid'])->name('orders.paid');
+        Route::patch('/orders/{order}/refund', [ShopOrderController::class, 'refund'])->middleware('role:shop_manager,shop_cashier')->name('orders.refund');
     });
 });
 

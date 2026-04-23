@@ -77,6 +77,18 @@ class RoleSeeder extends Seeder
                 'description' => 'Accès client au portail client',
                 'tenant_id' => null,
             ],
+            [
+                'name' => 'Gérant Boutique',
+                'slug' => 'shop_manager',
+                'description' => 'Gestion des articles culturels et stocks boutique',
+                'tenant_id' => null,
+            ],
+            [
+                'name' => 'Caissier Boutique',
+                'slug' => 'shop_cashier',
+                'description' => 'Ventes et encaissements boutique',
+                'tenant_id' => null,
+            ],
         ];
 
         foreach ($roles as $roleData) {
