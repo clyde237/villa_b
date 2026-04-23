@@ -1,4 +1,4 @@
-﻿# Villa Boutanga PMS — Contexte du projet
+# Villa Boutanga PMS — Contexte du projet
 
 ## Stack technique
 - Laravel 12, Blade, TailwindCSS v4, PostgreSQL
@@ -117,6 +117,8 @@
 - **Chef restaurant** : `restaurant.chief@villaboutanga.cm` / `password`
 - **Serveur restaurant** : `restaurant.staff@villaboutanga.cm` / `password`
 - **Caissier restaurant** : `restaurant.cashier@villaboutanga.cm` / `password`
+- **Manager Boutique** : `shop.manager@villaboutanga.cm` / `password`
+- **Caissier Boutique** : `shop.cashier@villaboutanga.cm` / `password`
 
 #### Docs
 - `scenario.md` : scénario complet pour une vidéo tutoriel (par rôles / modules)
@@ -621,3 +623,38 @@
    php artisan db:seed --class=ShopSeeder
    ```
    Cela charge **seulement** les catégories et 13 articles (pas les utilisateurs).
+
+## Améliorations UX et Caisse Boutique (Session 9) — COMPLET ✅
+
+### Standardisation de la recherche client
+- Création du composant réutilisable global `<x-customer-search>`
+- Centralisation du moteur et logique de recherche / création client rapide dans `resources/js/app.js` (`customerSearchDef`).
+- Remplacement des formulaires de sélection client statiques au niveau des réservations, factures, et boutique.
+
+### Refonte de l'interface POS (Boutique)
+- Réécriture intégrale de `shop/orders/create.blade.php`.
+- Abandon des `select` classiques au profit d'un système de panier dynamique en Alpine.js (`app.js` -> `orderItemsDef`).
+- UI moderne: rendu visuel sous forme de "ticket de caisse", gestion instantanée du sous-total, de la TVA (19,25%), et ajout multi-articles.
+
+### Système de Gestion de Caisse (Boutique)
+- Implémentation stricte d'un modèle comptable (`cash_register_sessions`, `cash_register_disbursements`).
+- **Règles imposées** : Impossible pour un caissier ou manager d'effectuer une vente si sa caisse n'a pas étée au préalable "Ouverte" pour la journée.
+- **Tableau de clôture interactif (Rapport Z)** :
+  - Calcule automatiquement le "Solde théorique" (Fond initial + ventes espèces - décaissements).
+  - Demande la saisie du "Solde réel compté" lors de la fermeture de la caisse.
+  - Alpine.js compare en direct et identifie l’écart (profit, perte ou juste).
+- Historique "Compta Boutique" complet : permet à la direction de visualiser le fond par session à `/shop/cash-register`.
+
+### Indicateurs de Performance (KPIs Dashboard)
+- Injection logique des métriques boutique au sein de l'unique contrôleur adaptatif (`DashboardController.php`).
+- Les utilisateurs `shop_manager` (et managers globaux) voient maintenant apparaître sur leur page d'accueil :
+  - Les indicateurs de Chiffre d'Affaires du jour (+ évolution vs la veille).
+  - Le compte des articles et de commandes passées dans la session courante.
+  - Un classement des Meilleurs Ventes (Top 3 du mois).
+  - Un rapport critique de stocks bas automatique.
+  - Les boutons d'Actions Rapides dynamiques "Ouvrir / Fermer caisse".
+
+### Refonte de l'Impression des Reçus (Factures Clients)
+- Analyse du modèle "Facture de réservation" format A4.
+- Application de ce standard de formatage (Logo, structure en grille détaillée, totaux et signature) exclusif à la version **Imprimée** (`@media print`) de la commande boutique (`shop/orders/show.blade.php`).
+- Refonte de la page d'impression autonome de restaurant (`restaurant/billing/receipt.blade.php`) vers ce même standard visuel A4 sans perturber l'interface admin.

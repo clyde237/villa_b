@@ -38,7 +38,11 @@
                 <div class="min-w-0">
                     <p class="text-xs font-semibold uppercase tracking-widest text-primary/45">{{ $card['label'] }}</p>
                     <p class="font-heading text-2xl font-semibold text-primary mt-1 truncate">{{ $card['value'] }}</p>
-                    <p class="text-xs text-primary/45 mt-1 truncate">{{ $card['subtitle'] ?? '' }}</p>
+                    @if(isset($card['subtitle_raw']))
+                        <p class="text-xs text-primary/45 mt-1 truncate">{!! $card['subtitle_raw'] !!}</p>
+                    @else
+                        <p class="text-xs text-primary/45 mt-1 truncate">{{ $card['subtitle'] ?? '' }}</p>
+                    @endif
                 </div>
                 <div class="h-10 w-10 rounded-xl bg-accent/30 border border-secondary/15 flex items-center justify-center text-primary/70 group-hover:bg-accent/40 flex-shrink-0">
                     <i data-lucide="{{ $card['icon'] ?? 'sparkles' }}" class="w-5 h-5"></i>
@@ -195,6 +199,100 @@
                 @endforeach
             </div>
         </div>
+    @endif
+
+    {{-- PANELS BOUTIQUE --}}
+    @if(isset($panels['shop_top_products']) || isset($panels['shop_low_stock']))
+        <!-- Actions Rapides Boutique (Pleine largeur sur sa ligne) -->
+        <div class="col-span-full mb-2 mt-4">
+            <div class="flex items-center justify-between">
+                <h2 class="font-heading font-semibold text-primary text-sm uppercase tracking-widest opacity-60">Actions Rapides Boutique</h2>
+                <div class="flex gap-2">
+                    @if(!($panels['shop_active_session'] ?? false))
+                        <a href="{{ route('shop.cash_register.open') }}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm inline-flex items-center">
+                            <i data-lucide="lock-open" class="w-4 h-4 mr-2"></i> Ouvrir ma caisse
+                        </a>
+                    @else
+                        <a href="{{ route('shop.orders.create') }}" class="bg-primary hover:bg-[#4a2a14] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm inline-flex items-center">
+                            <i data-lucide="plus" class="w-4 h-4 mr-2"></i> Nouvelle commande
+                        </a>
+                        <a href="{{ route('shop.cash_register.close') }}" class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm inline-flex items-center" title="Fermer la caisse">
+                            <i data-lucide="lock" class="w-4 h-4"></i>
+                        </a>
+                    @endif
+                </div>
+            </div>
+        </div>
+        
+        <!-- Top Produits Boutique -->
+        @if(!empty($panels['shop_top_products']) && count($panels['shop_top_products']) > 0)
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-secondary/15 lg:col-span-2">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-secondary/20">
+                <h2 class="font-heading font-semibold text-primary text-sm flex items-center gap-2">
+                    <i data-lucide="star" class="w-4 h-4 text-yellow-500 fill-yellow-500"></i>
+                    Meilleurs ventes de la boutique (Mois)
+                </h2>
+                <a href="{{ route('shop.products.index') }}"
+                    class="text-xs text-secondary hover:text-primary transition-colors flex items-center gap-1">
+                    Inventaire <i data-lucide="chevron-right" class="w-3 h-3"></i>
+                </a>
+            </div>
+            <div class="divide-y divide-secondary/10 px-2 py-2">
+                @foreach($panels['shop_top_products'] as $index => $item)
+                    <div class="flex items-center justify-between p-3 rounded-lg hover:bg-accent/10 transition-colors">
+                        <div class="flex items-center gap-3">
+                            <div class="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs
+                                {{ $index === 0 ? 'bg-yellow-100 text-yellow-700' : ($index === 1 ? 'bg-gray-200 text-gray-700' : 'bg-orange-100 text-orange-700') }}">
+                                #{{ $index + 1 }}
+                            </div>
+                            <div>
+                                <p class="font-medium text-primary text-sm">{{ $item->product->name ?? 'Produit inconnu' }}</p>
+                                <p class="text-[10px] text-primary/50">{{ $item->product->category->name ?? 'Catégorie' }}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="inline-block bg-primary/10 text-primary px-2.5 py-1 rounded text-xs font-bold">
+                                {{ $item->total_quantity }} <span class="font-normal opacity-70">vendus</span>
+                            </span>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
+
+        <!-- Alertes de stocks Boutique -->
+        @if(!empty($panels['shop_low_stock']) && count($panels['shop_low_stock']) > 0)
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-red-200 lg:col-span-1">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-red-100 bg-red-50/30">
+                <h2 class="font-heading font-semibold text-red-800 text-sm flex items-center gap-2">
+                    <i data-lucide="alert-triangle" class="w-4 h-4 text-red-500"></i>
+                    Boutique: Stocks critiques
+                </h2>
+            </div>
+            <div class="divide-y divide-gray-100 p-2">
+                @foreach($panels['shop_low_stock'] as $product)
+                    <div class="flex items-center justify-between p-3">
+                        <div>
+                            <p class="font-medium text-gray-900 text-sm">{{ $product->name }}</p>
+                            <p class="text-[10px] text-gray-500">{{ $product->category->name ?? '' }}</p>
+                        </div>
+                        <div>
+                            @if($product->stock_quantity <= 0)
+                                <span class="text-[10px] font-bold bg-red-100 text-red-700 px-2 py-0.5 rounded border border-red-200">
+                                    Rupture
+                                </span>
+                            @else
+                                <span class="text-[10px] font-bold bg-orange-100 text-orange-800 px-2 py-0.5 rounded border border-orange-200">
+                                    Il reste {{ $product->stock_quantity }}
+                                </span>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
     @endif
 </div>
 

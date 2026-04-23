@@ -3,7 +3,7 @@
 @section('title', 'Détail commande')
 
 @section('content')
-<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 print:hidden">
     <div class="flex items-center justify-between mb-8">
         <div>
             <h1 class="text-3xl font-bold text-primary">{{ $order->order_number }}</h1>
@@ -29,7 +29,7 @@
                 <div class="space-y-3">
                     <div>
                         <p class="text-secondary text-sm">Nom</p>
-                        <p class="font-medium text-primary">{{ $order->customer_name }}</p>
+                        <p class="font-medium text-primary">{{ $order->customer_name ?: 'Client de passage' }}</p>
                     </div>
                     @if ($order->customer_phone)
                         <div>
@@ -164,4 +164,125 @@
         </div>
     </div>
 </div>
+
+<!-- Reçu d'Impression (format facture A4) -->
+<div class="hidden print:block bg-white w-full h-full" id="invoice-print">
+    {{-- En-tête facture --}}
+    <div class="px-8 py-6 border-b border-secondary/10">
+        <div class="flex items-start justify-between">
+            <div>
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-12 h-12 rounded-full overflow-hidden border border-secondary/20 flex-shrink-0">
+                        <img src="{{ asset('images/logo.png') }}" alt="Logo" class="w-full h-full object-cover">
+                    </div>
+                    <div>
+                        <h2 class="font-heading text-xl font-bold text-primary">Boutique</h2>
+                        <p class="text-xs text-primary/50">Villa Boutanga</p>
+                    </div>
+                </div>
+            </div>
+            <div class="text-right">
+                <p class="text-xs font-semibold uppercase tracking-widest text-primary/40 mb-1">Ticket N°</p>
+                <p class="text-sm font-bold text-primary">{{ current(explode('-', $order->order_number)) }}</p>
+            </div>
+        </div>
+    </div>
+
+    {{-- Infos client --}}
+    <div class="px-8 py-5 border-b border-secondary/10 grid grid-cols-2 gap-6">
+        <div>
+            <p class="text-xs font-semibold uppercase tracking-widest text-primary/40 mb-2">Acheteur</p>
+            <p class="text-sm font-medium text-primary">{{ $order->customer_name ?: 'Client de passage' }}</p>
+            @if ($order->customer_phone)
+                <p class="text-xs text-primary/50">{{ $order->customer_phone }}</p>
+            @endif
+        </div>
+        <div>
+            <p class="text-xs font-semibold uppercase tracking-widest text-primary/40 mb-2">Informations</p>
+            @if ($order->booking)
+                <p class="text-xs text-primary/70">
+                    Hôte en séjour — Chambre {{ $order->booking->rooms->first()?->number }}
+                </p>
+            @endif
+            <p class="text-xs text-primary/70">
+                Date: {{ $order->created_at->format('d/m/Y H:i') }}
+            </p>
+            <p class="text-xs text-primary/70">
+                Vendeur: {{ $order->session->user->name ?? 'Staff' }}
+            </p>
+        </div>
+    </div>
+
+    {{-- Lignes de facturation --}}
+    <div class="px-8 py-4">
+        <div class="grid grid-cols-12 gap-4 py-2 border-b border-secondary/20 mb-1">
+            <div class="col-span-6 text-xs font-semibold uppercase tracking-widest text-primary/40">Article</div>
+            <div class="col-span-1 text-xs font-semibold uppercase tracking-widest text-primary/40 text-center">Qté</div>
+            <div class="col-span-2 text-xs font-semibold uppercase tracking-widest text-primary/40 text-right">P.U. HT</div>
+            <div class="col-span-3 text-xs font-semibold uppercase tracking-widest text-primary/40 text-right">Total</div>
+        </div>
+
+        @foreach ($order->items as $item)
+            <div class="grid grid-cols-12 gap-4 py-3 border-b border-secondary/10 items-center">
+                <div class="col-span-6">
+                    <p class="text-sm text-primary">{{ $item->product->name }}</p>
+                    <p class="text-xs text-primary/40">{{ $item->product->category->name ?? 'Article' }}</p>
+                </div>
+                <div class="col-span-1 text-xs text-primary/70 text-center">
+                    {{ $item->quantity }}
+                </div>
+                <div class="col-span-2 text-xs text-primary/70 text-right">
+                    {{ number_format($item->unit_price / 100, 0, ',', ' ') }} F
+                </div>
+                <div class="col-span-3 text-sm font-medium text-primary text-right">
+                    {{ number_format($item->item_total / 100, 0, ',', ' ') }} F
+                </div>
+            </div>
+        @endforeach
+    </div>
+
+    {{-- Totaux --}}
+    <div class="px-8 py-5 border-t border-secondary/20 bg-accent/10">
+        <div class="ml-auto w-64 space-y-2">
+            <div class="flex justify-between text-xs text-primary/60">
+                <span>Sous-total HT</span>
+                <span>{{ number_format($order->subtotal / 100, 0, ',', ' ') }} FCFA</span>
+            </div>
+            <div class="flex justify-between text-xs text-primary/60">
+                <span>TVA (19,25%)</span>
+                <span>{{ number_format($order->tax_amount / 100, 0, ',', ' ') }} FCFA</span>
+            </div>
+            <div class="flex justify-between text-sm font-semibold text-primary pt-2 border-t border-secondary/20">
+                <span>Total TTC</span>
+                <span>{{ number_format($order->total_amount / 100, 0, ',', ' ') }} FCFA</span>
+            </div>
+            @if($order->payment_status === 'paid')
+                <div class="flex justify-between text-xs text-green-600 mt-2 font-medium">
+                    <span class="flex items-center gap-1"><i data-lucide="check" class="w-3 h-3"></i> Payé</span>
+                    <span>{{ number_format($order->total_amount / 100, 0, ',', ' ') }} FCFA</span>
+                </div>
+            @endif
+        </div>
+    </div>
+    
+    {{-- Mentions légales --}}
+    <div class="px-8 py-4 border-t border-secondary/10 bg-accent/5">
+        <p class="text-xs text-primary/40 text-center">
+            TVA 19,25% incluse — Facture Boutique
+        </p>
+        <p class="text-xs text-primary/30 text-center mt-1">
+            Villa Boutanga · Bafoussam, Cameroun · Merci de votre visite
+        </p>
+    </div>
+</div>
+
+<style>
+    @media print {
+        body {
+            background-color: white !important;
+            margin: 0;
+            padding: 0;
+        }
+    }
+</style>
 @endsection

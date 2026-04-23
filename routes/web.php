@@ -202,6 +202,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // --- SHOP ---
     Route::prefix('shop')->name('shop.')->middleware('role:shop_manager,shop_cashier')->group(function () {
         // Gestion de la Caisse
+        Route::get('/cash-register', [CashRegisterController::class, 'index'])->middleware('role:shop_manager')->name('cash_register.index');
         Route::get('/cash-register/open', [CashRegisterController::class, 'showOpenForm'])->name('cash_register.open');
         Route::post('/cash-register/open', [CashRegisterController::class, 'open'])->name('cash_register.open.store');
         Route::get('/cash-register/close', [CashRegisterController::class, 'showCloseForm'])->name('cash_register.close');

@@ -26,6 +26,7 @@ class DashboardController extends Controller
         $isHousekeeping = $user->hasAnyRole(['housekeeping_leader', 'housekeeping_staff', 'housekeeping']);
         $isRestaurant = $user->hasAnyRole(['restaurant_chief', 'restaurant_staff']);
         $isFinance = $user->hasAnyRole(['cashier', 'accountant']);
+        $isShop = $user->hasAnyRole(['shop_manager', 'shop_cashier']);
 
         $cards = [];
         $panels = [];
@@ -227,6 +228,89 @@ class DashboardController extends Controller
                 'icon' => 'wallet',
                 'href' => route('bookings.index'),
             ];
+        }
+
+        // ===== SHOP =====
+        if ($isShop || $isManager) {
+            if (Schema::hasTable('shop_orders')) {
+                $tenantId = $user->tenant->id ?? 1; // Fallback
+                $today = Carbon::today();
+                $yesterday = Carbon::yesterday();
+
+                // Revenue Today
+                $shopRevenueToday = \App\Models\ShopOrder::where('tenant_id', $tenantId)
+                    ->where('payment_status', 'paid')
+                    ->whereDate('created_at', $today)
+                    ->sum('total_amount');
+                    
+                // Revenue yesterday
+                $shopRevenueYesterday = \App\Models\ShopOrder::where('tenant_id', $tenantId)
+                    ->where('payment_status', 'paid')
+                    ->whereDate('created_at', $yesterday)
+                    ->sum('total_amount');
+                    
+                $diff = $shopRevenueToday - $shopRevenueYesterday;
+                $percent = $shopRevenueYesterday > 0 ? ($diff / $shopRevenueYesterday) * 100 : 0;
+                $trendIcon = $diff >= 0 ? '<i data-lucide="arrow-up-right" class="w-3 h-3 inline text-green-500"></i>' : '<i data-lucide="arrow-down-right" class="w-3 h-3 inline text-red-500"></i>';
+
+                $cards[] = [
+                    'label' => 'Revenus Boutique',
+                    'value' => number_format($shopRevenueToday / 100, 0, ',', ' ') . ' FCFA',
+                    'subtitle' => "Evolution: " . number_format($percent, 1) . "%",
+                    'subtitle_raw' => $trendIcon . " " . number_format($percent, 1) . "% par rapport à hier",
+                    'icon' => 'shopping-bag',
+                    'href' => route('shop.orders.index'),
+                ];
+
+                // Orders Today
+                $shopOrdersToday = \App\Models\ShopOrder::where('tenant_id', $tenantId)
+                    ->whereDate('created_at', $today)
+                    ->count();
+
+                $cards[] = [
+                    'label' => 'Cmd Boutique',
+                    'value' => $shopOrdersToday,
+                    'subtitle' => 'Aujourd\'hui',
+                    'icon' => 'receipt',
+                    'href' => route('shop.orders.index'),
+                ];
+
+                // Items sold Today
+                $itemsSoldToday = \App\Models\ShopOrder::where('tenant_id', $tenantId)
+                    ->whereDate('created_at', $today)
+                    ->sum('total_items');
+                    
+                $cards[] = [
+                    'label' => 'Articles vendus',
+                    'value' => $itemsSoldToday,
+                    'subtitle' => 'Aujourd\'hui',
+                    'icon' => 'package',
+                    'href' => route('shop.orders.index'),
+                ];
+
+                // Panels
+                $panels['shop_top_products'] = \App\Models\ShopOrderItem::selectRaw('shop_product_id, SUM(quantity) as total_quantity')
+                    ->whereHas('order', function ($query) use ($tenantId) {
+                        $query->where('tenant_id', $tenantId)->where('payment_status', 'paid');
+                    })
+                    ->whereMonth('created_at', Carbon::now()->month)
+                    ->groupBy('shop_product_id')
+                    ->orderByDesc('total_quantity')
+                    ->take(3)
+                    ->with('product') // Product model relation
+                    ->get();
+                    
+                $panels['shop_low_stock'] = \App\Models\ShopProduct::where('tenant_id', $tenantId)
+                    ->where('stock_quantity', '<=', 5)
+                    ->orderBy('stock_quantity', 'asc')
+                    ->take(5)
+                    ->get();
+                    
+                $panels['shop_active_session'] = \App\Models\CashRegisterSession::where('tenant_id', $tenantId)
+                    ->where('user_id', auth()->id())
+                    ->whereNull('closed_at')
+                    ->exists();
+            }
         }
 
         if (empty($cards)) {

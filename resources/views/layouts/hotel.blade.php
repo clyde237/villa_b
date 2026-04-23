@@ -142,6 +142,9 @@
                                 <x-sidebar-link route="shop.products.index" icon="package">Articles</x-sidebar-link>
                             @endrole
                             <x-sidebar-link route="shop.orders.index" icon="shopping-cart">Commandes</x-sidebar-link>
+                            @role('shop_manager')
+                                <x-sidebar-link route="shop.cash_register.index" icon="calculator">Compta Boutique</x-sidebar-link>
+                            @endrole
                         </ul>
                     </div>
                 @endrole

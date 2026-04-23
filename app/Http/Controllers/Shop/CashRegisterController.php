@@ -10,6 +10,17 @@ use Illuminate\Support\Facades\DB;
 
 class CashRegisterController extends Controller
 {
+    public function index()
+    {
+        $sessions = CashRegisterSession::where('tenant_id', auth()->user()->tenant->id)
+            ->where('module', 'shop')
+            ->with('user')
+            ->orderBy('opened_at', 'desc')
+            ->paginate(15);
+            
+        return view('shop.cash_register.index', compact('sessions'));
+    }
+
     public function showOpenForm()
     {
         $activeSession = CashRegisterSession::where('user_id', auth()->id())
