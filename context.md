@@ -1,4 +1,4 @@
-﻿# Villa Boutanga PMS — Contexte du projet
+# Villa Boutanga PMS — Contexte du projet
 
 ## Stack technique
 - Laravel 12, Blade, TailwindCSS v4, PostgreSQL
@@ -10,7 +10,7 @@
 ### Infrastructure
 - 16 modèles + trait BelongsToTenant (multitenant)
 - 16 migrations en 6 vagues + folio_items
-- Seeders : Tenant (Villa Boutanga), 4 Users, 4 RoomTypes, 10 Rooms, 50 Customers
+- Seeders : Tenant (Villa Boutanga), Roles, Users (hotel + restaurant), 4 RoomTypes, 10 Rooms, 50 Customers
 - Enums : RoomStatus, BookingStatus
 - Services : CheckOutService, LoyaltyService
 - Table folio_items (suivi prestations séjour)
@@ -92,10 +92,9 @@
 - **Interception JavaScript** : Script global dans le popup component
   - Intercepte les réponses fetch (AJAX) avec statut 403
   - Affichage automatique du popup avec message d'erreur
-- **Formulaires protégés** : Classe `expect-popup` sur les formulaires sensibles
-  - Transforme les soumissions en requêtes AJAX
-  - Affiche le popup au lieu de rediriger vers page d'erreur
-  - Gestion des erreurs JSON avec logs de debug
+- **Note importante (fluidité)** :
+  - Le popup intercepte uniquement les réponses `fetch()` (AJAX) en 403.
+  - Les formulaires HTML restent en soumission normale (POST + redirect + flash message), afin d'éviter les "succès invisibles" et les modals qui restent ouverts.
 
 #### Formulaires avec classe `expect-popup`
 - `resources/views/rooms/show.blade.php` : formulaire changement statut
@@ -111,9 +110,18 @@
 - **Manager** : `manager@villaboutanga.cm` / `password`
 - **Réceptionniste** : `reception@villaboutanga.cm` / `password`
 - **Housekeeping-leader** : `housekeeping.leader@villaboutanga.cm` / `password`
-- **Housekeeping** : `housekeeping@villaboutanga.cm` / `password`
+- **Housekeeping-staff** :
+  - `housekeeping.staff1@villaboutanga.cm` / `password`
+  - `housekeeping.staff2@villaboutanga.cm` / `password`
+  - `housekeeping.staff3@villaboutanga.cm` / `password`
 - **Chef restaurant** : `restaurant.chief@villaboutanga.cm` / `password`
 - **Serveur restaurant** : `restaurant.staff@villaboutanga.cm` / `password`
+- **Caissier restaurant** : `restaurant.cashier@villaboutanga.cm` / `password`
+- **Manager Boutique** : `shop.manager@villaboutanga.cm` / `password`
+- **Caissier Boutique** : `shop.cashier@villaboutanga.cm` / `password`
+
+#### Docs
+- `scenario.md` : scénario complet pour une vidéo tutoriel (par rôles / modules)
 
 ## Conventions importantes
 - Prix stockés en centimes (45000 FCFA = 4500000 en base)
@@ -146,6 +154,7 @@
 
 ### Priorité moyenne
 - ✅ Module Restaurant (menus + commandes + facturation + portail QR + garde-manger + lien folio) — COMPLET (MVP)
+- ✅ Module Shop/POS (articles culturels + boutique) — COMPLET
 - ❌ Rapports (taux occupation, revenus, fidélité)
 - ❌ PDF facture via DomPDF
 
@@ -161,7 +170,7 @@
 1. **`resources/views/components/access-denied-popup.blade.php`**
    - Composant Blade pour le popup modal
    - JavaScript vanilla pour gestion affichage/masquage
-   - Interception fetch + gestion formulaires expect-popup
+   - Interception fetch (AJAX) pour afficher le popup sur les erreurs 403
    - Logs de debug pour faciliter le troubleshooting
 
 2. **`popup-access-denied-plan.md`**
@@ -290,11 +299,15 @@
   - 11/11 tests passent ✅
   - Couvre tous les rôles et permissions
 - **Popup Fonctionnel** : Testé manuellement
-  - Bouton test sur dashboard ✅
-  - Formulaires avec classe expect-popup ✅
-  - Interception AJAX ✅
-  - Affichage popup ✅
-- **Debug Console** : Logs détaillés disponibles (F12)
+   - Bouton test sur dashboard ✅
+   - Interception fetch() en 403 ✅
+   - Affichage popup ✅
+ - **Note** : Les formulaires ne sont plus interceptés en AJAX (fluidité + redirects + flash messages).
+
+## Correctifs fluidité (Session 5)
+- Suppression de l'interception globale des formulaires `expect-popup` (elle consommait les redirects et masquait les flash messages).
+- Les actions CRUD (ex: chambres) redeviennent des POST classiques: message de succès visible et liste à jour sans rafraichir manuellement.
+- Ajout de feedback sur le module Chambres: erreurs visibles dans le modal + réouverture automatique du modal en cas d'erreur.
 
 ## Module Utilisateurs (Session 4) — COMPLET ✅
 
@@ -513,3 +526,135 @@
   - `restaurant.chief@villaboutanga.cm` / `password` (role `restaurant_chief`)
   - `restaurant.staff@villaboutanga.cm` / `password` (role `restaurant_staff`)
 - Seeder: `database/seeders/UserSeeder.php`
+
+## Module Shop/POS (Session 8) — COMPLET ✅
+
+### Fonctionnalités livrées
+- **Gestion des articles** (shop_manager uniquement)
+  - Création/modification/suppression articles
+  - Catégories d'articles (Sculptures, Textiles, Bijoux, Artisanat, Souvenirs)
+  - Prix en FCFA, stocké en centimes
+  - Stock avec niveau de réappro
+  - Filtres: recherche, catégorie, statut
+  - 13 articles de test seedés
+
+- **Point de vente / Commandes** (shop_manager et shop_cashier)
+  - Création commande avec panier dynamique
+  - Calcul automatique sous-total, TVA (19,25%), total
+  - Support clients (nom + téléphone) ou via client existant
+  - Mode "Sur chambre" (lien folio) pour clients résidents
+  - Méthodes paiement: espèces, mobile money, carte, sur chambre, autre
+  - Affichage détail commande avec résumé
+  - Statuts: non payée, payée, remboursée
+  - Actions: marquer payée, rembourser (+ restauration stock), imprimer
+
+### Sécurité & Règles métier
+- Routes protégées par `middleware('role:shop_manager,shop_cashier')`
+- Gestion articles réservée à shop_manager
+- Décrément stock à la création commande
+- Restauration stock en cas de remboursement
+- Isolation tenant stricte
+
+### Rôles créés (2 rôles)
+- `shop_manager` : Gestion articles et boutique
+- `shop_cashier` : Ventes et encaissement
+
+### Utilisateurs seedés
+- `shop.manager@villaboutanga.cm` / `password` (role `shop_manager`)
+- `shop.cashier@villaboutanga.cm` / `password` (role `shop_cashier`)
+
+### Tables créées
+- `shop_categories` : catégories articles
+- `shop_products` : articles en vente (price en centimes, stock)
+- `shop_orders` : commandes/ventes (subtotal, tax_amount, total_amount)
+- `shop_order_items` : lignes commande
+
+### Fichiers créés/modifiés
+- Modèles:
+  - `app/Models/ShopCategory.php`
+  - `app/Models/ShopProduct.php`
+  - `app/Models/ShopOrder.php`
+  - `app/Models/ShopOrderItem.php`
+- Contrôleurs:
+  - `app/Http/Controllers/ShopProductController.php`
+  - `app/Http/Controllers/ShopOrderController.php`
+- Migrations:
+  - `2026_04_16_100000_create_shop_categories_table.php`
+  - `2026_04_16_100100_create_shop_products_table.php`
+  - `2026_04_16_100200_create_shop_orders_table.php`
+  - `2026_04_16_100300_create_shop_order_items_table.php`
+- Seeders:
+  - `database/seeders/ShopSeeder.php` (13 articles test)
+  - Modification `database/seeders/UserSeeder.php` (ajout shop users)
+  - Modification `database/seeders/RoleSeeder.php` (ajout 2 rôles)
+  - Modification `database/seeders/DatabaseSeeder.php` (call ShopSeeder)
+- Vues:
+  - `resources/views/shop/products/index.blade.php` (liste articles)
+  - `resources/views/shop/products/create.blade.php` (créer article)
+  - `resources/views/shop/products/edit.blade.php` (modifier article)
+  - `resources/views/shop/orders/index.blade.php` (liste commandes)
+  - `resources/views/shop/orders/create.blade.php` (POS / créer commande)
+  - `resources/views/shop/orders/show.blade.php` (détail commande)
+- Routes: `routes/web.php` (groupe `/shop` with CRUD routes)
+- Sidebar: `resources/views/layouts/hotel.blade.php` (section Boutique)
+
+### Chargement des données (seeders)
+**Important** : Les seeders sont répartis ainsi :
+- `RoleSeeder` → crée les rôles (inclus `shop_manager`, `shop_cashier`)
+- `UserSeeder` → crée les utilisateurs (inclus `shop.manager@`, `shop.cashier@`)
+- `ShopSeeder` → crée catégories et articles boutique (13 produits test)
+- `DatabaseSeeder` → appelle tous les seeders
+
+**Commandes à exécuter** :
+1. **Première initialisation** (réinitialise la DB) :
+   ```bash
+   php artisan migrate:fresh --seed
+   ```
+   Cela exécute toutes les migrations ET tous les seeders (DatabaseSeeder).
+
+2. **Charger uniquement les utilisateurs** (si DB déjà prête) :
+   ```bash
+   php artisan db:seed --class=UserSeeder
+   ```
+   Cela charge admin, manager, reception, housekeeping staff, restaurant staff, **et shop staff**.
+
+3. **Charger uniquement les articles boutique** :
+   ```bash
+   php artisan db:seed --class=ShopSeeder
+   ```
+   Cela charge **seulement** les catégories et 13 articles (pas les utilisateurs).
+
+## Améliorations UX et Caisse Boutique (Session 9) — COMPLET ✅
+
+### Standardisation de la recherche client
+- Création du composant réutilisable global `<x-customer-search>`
+- Centralisation du moteur et logique de recherche / création client rapide dans `resources/js/app.js` (`customerSearchDef`).
+- Remplacement des formulaires de sélection client statiques au niveau des réservations, factures, et boutique.
+
+### Refonte de l'interface POS (Boutique)
+- Réécriture intégrale de `shop/orders/create.blade.php`.
+- Abandon des `select` classiques au profit d'un système de panier dynamique en Alpine.js (`app.js` -> `orderItemsDef`).
+- UI moderne: rendu visuel sous forme de "ticket de caisse", gestion instantanée du sous-total, de la TVA (19,25%), et ajout multi-articles.
+
+### Système de Gestion de Caisse (Boutique)
+- Implémentation stricte d'un modèle comptable (`cash_register_sessions`, `cash_register_disbursements`).
+- **Règles imposées** : Impossible pour un caissier ou manager d'effectuer une vente si sa caisse n'a pas étée au préalable "Ouverte" pour la journée.
+- **Tableau de clôture interactif (Rapport Z)** :
+  - Calcule automatiquement le "Solde théorique" (Fond initial + ventes espèces - décaissements).
+  - Demande la saisie du "Solde réel compté" lors de la fermeture de la caisse.
+  - Alpine.js compare en direct et identifie l’écart (profit, perte ou juste).
+- Historique "Compta Boutique" complet : permet à la direction de visualiser le fond par session à `/shop/cash-register`.
+
+### Indicateurs de Performance (KPIs Dashboard)
+- Injection logique des métriques boutique au sein de l'unique contrôleur adaptatif (`DashboardController.php`).
+- Les utilisateurs `shop_manager` (et managers globaux) voient maintenant apparaître sur leur page d'accueil :
+  - Les indicateurs de Chiffre d'Affaires du jour (+ évolution vs la veille).
+  - Le compte des articles et de commandes passées dans la session courante.
+  - Un classement des Meilleurs Ventes (Top 3 du mois).
+  - Un rapport critique de stocks bas automatique.
+  - Les boutons d'Actions Rapides dynamiques "Ouvrir / Fermer caisse".
+
+### Refonte de l'Impression des Reçus (Factures Clients)
+- Analyse du modèle "Facture de réservation" format A4.
+- Application de ce standard de formatage (Logo, structure en grille détaillée, totaux et signature) exclusif à la version **Imprimée** (`@media print`) de la commande boutique (`shop/orders/show.blade.php`).
+- Refonte de la page d'impression autonome de restaurant (`restaurant/billing/receipt.blade.php`) vers ce même standard visuel A4 sans perturber l'interface admin.
