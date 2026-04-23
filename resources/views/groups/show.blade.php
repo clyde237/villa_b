@@ -441,19 +441,12 @@
                 <label class="block text-xs font-semibold uppercase tracking-widest text-primary/50 mb-1.5">
                     Client de cette chambre *
                 </label>
-                <select name="customer_id" required
-                    class="w-full px-3 py-2 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary">
-                    <option value="">Sélectionner un client...</option>
-                    {{-- Contact du groupe en premier --}}
-                    @if($groupBooking->contactCustomer)
-                    <option value="{{ $groupBooking->contactCustomer->id }}" selected>
-                        ★ {{ $groupBooking->contactCustomer->full_name }} (contact principal)
-                    </option>
-                    @endif
-                    @foreach($customers->where('id', '!=', $groupBooking->contact_customer_id) as $customer)
-                    <option value="{{ $customer->id }}">{{ $customer->full_name }}</option>
-                    @endforeach
-                </select>
+                <x-customer-search 
+                    :customers="$customers" 
+                    name="customer_id" 
+                    :value="$groupBooking->contact_customer_id ?? ''" 
+                    placeholder="Chercher le client pour cette chambre..." 
+                />
             </div>
 
             {{-- Personnes --}}

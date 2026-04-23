@@ -133,6 +133,18 @@
                         </ul>
                     </div>
                 @endrole
+
+                @role('shop_manager','shop_cashier')
+                    <div>
+                        <p class="text-secondary/40 text-[10px] font-semibold uppercase tracking-widest mb-2 px-2">Boutique</p>
+                        <ul class="space-y-0.5">
+                            @role('shop_manager')
+                                <x-sidebar-link route="shop.products.index" icon="package">Articles</x-sidebar-link>
+                            @endrole
+                            <x-sidebar-link route="shop.orders.index" icon="shopping-cart">Commandes</x-sidebar-link>
+                        </ul>
+                    </div>
+                @endrole
             </nav>
 
             <div class="px-3 pb-3">

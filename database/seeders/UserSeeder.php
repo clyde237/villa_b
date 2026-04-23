@@ -26,6 +26,9 @@ class UserSeeder extends Seeder
             'housekeeping_staff',
             'restaurant_chief',
             'restaurant_staff',
+            'cashier',
+            'shop_manager',
+            'shop_cashier',
         ])->get()->keyBy('slug');
 
         $admin = User::firstOrCreate(
@@ -99,6 +102,42 @@ class UserSeeder extends Seeder
             ]
         );
         $roles->get('restaurant_staff')?->users()->syncWithoutDetaching([$restaurantStaff->id]);
+
+        $restaurantCashier = User::firstOrCreate(
+            ['email' => 'restaurant.cashier@villaboutanga.cm'],
+            [
+                'name' => 'Caissier Restaurant',
+                'password' => Hash::make('password'),
+                'tenant_id' => $tenant->id,
+                'role' => 'cashier',
+                'is_active' => true,
+            ]
+        );
+        $roles->get('cashier')?->users()->syncWithoutDetaching([$restaurantCashier->id]);
+
+        $shopManager = User::firstOrCreate(
+            ['email' => 'shop.manager@villaboutanga.cm'],
+            [
+                'name' => 'Gérant Boutique',
+                'password' => Hash::make('password'),
+                'tenant_id' => $tenant->id,
+                'role' => 'shop_manager',
+                'is_active' => true,
+            ]
+        );
+        $roles->get('shop_manager')?->users()->syncWithoutDetaching([$shopManager->id]);
+
+        $shopCashier = User::firstOrCreate(
+            ['email' => 'shop.cashier@villaboutanga.cm'],
+            [
+                'name' => 'Caissier Boutique',
+                'password' => Hash::make('password'),
+                'tenant_id' => $tenant->id,
+                'role' => 'shop_cashier',
+                'is_active' => true,
+            ]
+        );
+        $roles->get('shop_cashier')?->users()->syncWithoutDetaching([$shopCashier->id]);
 
         $staffMembers = [
             [

@@ -116,56 +116,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     };
 
-    // Interception des formulaires avec classe expect-popup
-    document.addEventListener('submit', function(e) {
-        const form = e.target;
-        console.log('Form submitted:', form);
-        console.log('Form classes:', form.classList.toString());
-        console.log('Has expect-popup class:', form.classList.contains('expect-popup'));
-
-        if (form.classList.contains('expect-popup')) {
-            console.log('Intercepting form with expect-popup class');
-            e.preventDefault();
-
-            const formData = new FormData(form);
-            const action = form.action || window.location.href;
-            const method = form.method || 'POST';
-
-            console.log('Submitting form via AJAX to:', action, 'method:', method);
-
-            fetch(action, {
-                method: method,
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                }
-            })
-            .then(response => {
-                console.log('AJAX response received, status:', response.status);
-                console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-                return response.text().then(text => {
-                    console.log('Response text:', text);
-                    try {
-                        const data = JSON.parse(text);
-                        console.log('Parsed JSON data:', data);
-                        if (response.status === 403 && data.access_denied) {
-                            showAccessDeniedPopup(data.message);
-                        } else if (response.ok) {
-                            console.log('Form submitted successfully, reloading page');
-                            window.location.reload();
-                        }
-                    } catch (e) {
-                        console.error('Failed to parse JSON:', e);
-                        console.log('Raw response:', text);
-                    }
-                });
-            })
-            .catch(error => {
-                console.error('Erreur lors de la soumission du formulaire:', error);
-            });
-        }
-    });
+    // Note:
+    // On ne fait plus d'interception AJAX globale des formulaires.
+    // Les soumissions HTML classiques garantissent:
+    // - redirections serveur (302) suivies correctement
+    // - flash messages (success/errors) visibles
+    // - modals qui se referment naturellement via rechargement/navigation
 });
 document.addEventListener('DOMContentLoaded', function() {
     @if(session('access_denied_popup'))
