@@ -89,7 +89,21 @@
                     <label class="block text-xs text-primary/50 mb-1.5">Nouveau statut</label>
                     <select name="status"
                             class="w-full px-3 py-2 text-xs border border-secondary/30 rounded-lg bg-white text-primary focus:outline-none focus:border-secondary">
+                        @php
+                            $user = auth()->user();
+                            $isHousekeepingOnly = $user->hasAnyRole(['housekeeping', 'housekeeping_chief', 'housekeeping_staff', 'housekeeping_leader']) && !$user->hasAnyRole(['manager', 'reception']);
+                            $housekeepingStatuses = [
+                                \App\Enums\RoomStatus::DIRTY,
+                                \App\Enums\RoomStatus::CLEANING,
+                                \App\Enums\RoomStatus::CLEAN,
+                                \App\Enums\RoomStatus::INSPECTED,
+                                \App\Enums\RoomStatus::MAINTENANCE,
+                            ];
+                        @endphp
                         @foreach(\App\Enums\RoomStatus::cases() as $status)
+                            @if($isHousekeepingOnly && !in_array($status, $housekeepingStatuses))
+                                @continue
+                            @endif
                             <option value="{{ $status->value }}"
                                 {{ $room->status === $status ? 'selected' : '' }}>
                                 {{ $status->label() }}
