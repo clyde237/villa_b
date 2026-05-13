@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Enums\RoomStatus;
 use App\Models\Room;
+use App\Models\RoomImage;
 use App\Models\RoomType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class RoomController extends Controller
 {
@@ -18,7 +20,7 @@ class RoomController extends Controller
         $search = $request->get('search');
 
         // --- Données onglet Chambres ---
-        $roomsQuery = Room::with(['roomType', 'activeHousekeepingAssignment.team'])->orderBy('floor')->orderBy('number');
+        $roomsQuery = Room::with(['roomType', 'activeHousekeepingAssignment.team', 'images'])->orderBy('floor')->orderBy('number');
 
         if ($status !== 'all') {
             $roomsQuery->where('status', $status);
@@ -33,13 +35,17 @@ class RoomController extends Controller
 
         $rooms = $roomsQuery->paginate(20)->withQueryString();
 
-        // Compteurs pour les filtres
+        // Compteurs pour tous les statuts
         $counts = [
             'all'           => Room::count(),
             'available'     => Room::where('status', RoomStatus::AVAILABLE)->count(),
             'occupied'      => Room::where('status', RoomStatus::OCCUPIED)->count(),
-            'out_of_order'  => Room::where('status', RoomStatus::OUT_OF_ORDER)->count(),
+            'dirty'         => Room::where('status', RoomStatus::DIRTY)->count(),
+            'cleaning'      => Room::where('status', RoomStatus::CLEANING)->count(),
+            'clean'         => Room::where('status', RoomStatus::CLEAN)->count(),
+            'inspected'     => Room::where('status', RoomStatus::INSPECTED)->count(),
             'maintenance'   => Room::where('status', RoomStatus::MAINTENANCE)->count(),
+            'out_of_order'  => Room::where('status', RoomStatus::OUT_OF_ORDER)->count(),
         ];
 
         // --- Données onglet Types ---
@@ -64,12 +70,27 @@ class RoomController extends Controller
             'floor'        => ['nullable', 'string', 'max:10'],
             'view_type'    => ['nullable', 'string', 'max:50'],
             'notes'        => ['nullable', 'string'],
+            'images'       => ['nullable', 'array', 'max:4'],
+            'images.*'     => ['image', 'mimes:jpeg,jpg,png,webp', 'max:3072'],
         ]);
 
         $validated['tenant_id'] = Auth::user()->tenant_id
             ?? \App\Models\Tenant::where('slug', 'villa-boutanga')->value('id');
 
-        Room::create($validated);
+        unset($validated['images']);
+        $room = Room::create($validated);
+
+        // Upload images
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $index => $file) {
+                $path = $file->store("rooms/{$room->id}", 'public');
+                RoomImage::create([
+                    'room_id' => $room->id,
+                    'path' => $path,
+                    'sort_order' => $index,
+                ]);
+            }
+        }
 
         return redirect()->route('rooms.index', ['tab' => 'rooms'])
             ->with('success', 'Chambre créée avec succès.');
@@ -83,9 +104,28 @@ class RoomController extends Controller
             'floor'        => ['nullable', 'string', 'max:10'],
             'view_type'    => ['nullable', 'string', 'max:50'],
             'notes'        => ['nullable', 'string'],
+            'images'       => ['nullable', 'array', 'max:4'],
+            'images.*'     => ['image', 'mimes:jpeg,jpg,png,webp', 'max:3072'],
         ]);
 
+        unset($validated['images']);
         $room->update($validated);
+
+        // Upload nouvelles images (on vérifie qu'on ne dépasse pas 4 au total)
+        if ($request->hasFile('images')) {
+            $existingCount = $room->images()->count();
+            $newFiles = $request->file('images');
+            $slotsAvailable = 4 - $existingCount;
+
+            foreach (array_slice($newFiles, 0, $slotsAvailable) as $file) {
+                $path = $file->store("rooms/{$room->id}", 'public');
+                RoomImage::create([
+                    'room_id' => $room->id,
+                    'path' => $path,
+                    'sort_order' => $existingCount++,
+                ]);
+            }
+        }
 
         return redirect()->route('rooms.index', ['tab' => 'rooms'])
             ->with('success', 'Chambre mise à jour.');
@@ -98,10 +138,30 @@ class RoomController extends Controller
             return back()->withErrors(['delete' => 'Impossible de supprimer une chambre avec des réservations actives.']);
         }
 
+        // Supprimer les images du disque
+        foreach ($room->images as $image) {
+            Storage::disk('public')->delete($image->path);
+        }
+
         $room->delete();
 
         return redirect()->route('rooms.index', ['tab' => 'rooms'])
             ->with('success', 'Chambre supprimée.');
+    }
+
+    /**
+     * Supprimer une image individuelle d'une chambre (AJAX)
+     */
+    public function destroyImage(Room $room, RoomImage $image)
+    {
+        if ($image->room_id !== $room->id) {
+            abort(403);
+        }
+
+        Storage::disk('public')->delete($image->path);
+        $image->delete();
+
+        return back()->with('success', 'Image supprimée.');
     }
 
     public function updateStatus(Request $request, Room $room)
@@ -117,6 +177,26 @@ class RoomController extends Controller
             return back()->withErrors([
                 'status' => "Transition impossible : {$room->status->label()} → {$newStatus->label()}"
             ]);
+        }
+
+        // Vérification des permissions spécifiques au housekeeping
+        $user = Auth::user();
+        $isHousekeepingOnly = $user->hasAnyRole(['housekeeping', 'housekeeping_chief', 'housekeeping_staff', 'housekeeping_leader']) && !$user->hasAnyRole(['manager', 'reception']);
+        
+        if ($isHousekeepingOnly) {
+            $housekeepingStatuses = [
+                RoomStatus::DIRTY,
+                RoomStatus::CLEANING,
+                RoomStatus::CLEAN,
+                RoomStatus::INSPECTED,
+                RoomStatus::MAINTENANCE,
+            ];
+
+            if (!in_array($newStatus, $housekeepingStatuses)) {
+                return back()->withErrors([
+                    'status' => "Vous n'avez pas la permission d'appliquer le statut {$newStatus->label()}."
+                ]);
+            }
         }
 
         $room->updateStatus($newStatus, $validated['reason'] ?? null);
@@ -184,7 +264,7 @@ class RoomController extends Controller
 
     public function show(Room $room)
     {
-        $room->load(['roomType', 'statusHistory' => fn($q) => $q->orderBy('changed_at', 'desc')->limit(10)]);
+        $room->load(['roomType', 'images', 'statusHistory' => fn($q) => $q->orderBy('changed_at', 'desc')->limit(10)]);
         return view('rooms.show', compact('room'));
     }
 }

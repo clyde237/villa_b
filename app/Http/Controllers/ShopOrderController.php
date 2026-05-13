@@ -4,11 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\Customer;
+use App\Models\FolioItem;
 use App\Models\ShopOrder;
 use App\Models\ShopOrderItem;
 use App\Models\ShopProduct;
 use App\Enums\BookingStatus;
+use App\Services\CheckOutService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -84,7 +88,7 @@ class ShopOrderController extends Controller
         $tenant = auth()->user()->tenant;
 
         $validated = $request->validate([
-            'customer_name' => 'required|string|max:255',
+            'customer_name' => 'nullable|string|max:255',
             'customer_first_name' => 'nullable|string|max:255',
             'customer_phone' => 'nullable|string|max:20',
             'customer_id' => 'nullable|exists:customers,id',
@@ -97,6 +101,29 @@ class ShopOrderController extends Controller
             'notes' => 'nullable|string',
         ]);
 
+        // Si room_charge, le booking_id est obligatoire
+        if ($validated['payment_method'] === 'room_charge' && empty($validated['booking_id'])) {
+            return back()->withInput()->withErrors(['booking_id' => 'Vous devez sélectionner une chambre pour débiter sur le séjour.']);
+        }
+
+        // Si on associe à un booking, récupérer le client du booking
+        $booking = null;
+        if (!empty($validated['booking_id'])) {
+            $booking = Booking::where('id', $validated['booking_id'])
+                ->where('status', BookingStatus::CHECKED_IN)
+                ->with('customer')
+                ->first();
+
+            if (!$booking) {
+                return back()->withInput()->withErrors(['booking_id' => 'Le séjour sélectionné n\'est pas en cours.']);
+            }
+
+            // Auto-remplir les infos client depuis le booking
+            $validated['customer_id'] = $booking->customer_id;
+            $validated['customer_name'] = $booking->customer->last_name ?? 'Client';
+        }
+
+        // Créer un nouveau client si demandé
         if (!empty($validated['create_customer']) && empty($validated['customer_id'])) {
             $customer = Customer::create([
                 'tenant_id' => $tenant->id,
@@ -106,6 +133,11 @@ class ShopOrderController extends Controller
             ]);
             $validated['customer_id'] = $customer->id;
             $validated['customer_name'] = $customer->full_name ?? ($customer->first_name . ' ' . $customer->last_name);
+        }
+
+        // customer_name requis : fallback si vide
+        if (empty($validated['customer_name'])) {
+            $validated['customer_name'] = 'Client de passage';
         }
 
         // Vérifier que tous les produits appartiennent au tenant
@@ -136,55 +168,87 @@ class ShopOrderController extends Controller
             return redirect()->route('shop.cash_register.open')->with('warning', 'Vous devez ouvrir votre caisse.');
         }
 
-        // Créer la commande
-        $orderNumber = 'SHOP-' . date('YmdHis') . '-' . Str::random(4);
-        $totalItems = 0;
-        $subtotal = 0;
+        // Créer la commande dans une transaction
+        $order = DB::transaction(function () use ($validated, $tenant, $products, $activeSession, $booking) {
+            $orderNumber = 'SHOP-' . date('YmdHis') . '-' . Str::random(4);
+            $totalItems = 0;
+            $subtotal = 0;
 
-        $order = ShopOrder::create([
-            'tenant_id' => $tenant->id,
-            'order_number' => $orderNumber,
-            'customer_name' => $validated['customer_name'],
-            'customer_phone' => $validated['customer_phone'],
-            'customer_id' => $validated['customer_id'],
-            'booking_id' => $validated['booking_id'],
-            'payment_method' => $validated['payment_method'],
-            'created_by' => auth()->id(),
-            'cash_register_session_id' => $activeSession->id,
-            'notes' => $validated['notes'],
-            'payment_status' => 'unpaid',
-        ]);
-
-        // Créer les items et mettre à jour les stocks
-        foreach ($validated['items'] as $item) {
-            $product = $products->get($item['product_id']);
-            $itemTotal = $product->price * $item['quantity'];
-            $totalItems += $item['quantity'];
-            $subtotal += $itemTotal;
-
-            ShopOrderItem::create([
-                'shop_order_id' => $order->id,
-                'shop_product_id' => $product->id,
-                'quantity' => $item['quantity'],
-                'unit_price' => $product->price,
-                'item_total' => $itemTotal,
+            $order = ShopOrder::create([
+                'tenant_id' => $tenant->id,
+                'order_number' => $orderNumber,
+                'customer_name' => $validated['customer_name'],
+                'customer_phone' => $validated['customer_phone'] ?? null,
+                'customer_id' => $validated['customer_id'] ?? null,
+                'booking_id' => $validated['booking_id'] ?? null,
+                'payment_method' => $validated['payment_method'],
+                'created_by' => auth()->id(),
+                'cash_register_session_id' => $activeSession->id,
+                'notes' => $validated['notes'] ?? null,
+                'payment_status' => 'unpaid',
             ]);
 
-            // Décrémenter le stock
-            $product->decrement('stock_quantity', $item['quantity']);
-        }
+            // Créer les items et mettre à jour les stocks
+            foreach ($validated['items'] as $item) {
+                $product = $products->get($item['product_id']);
+                $itemTotal = $product->price * $item['quantity'];
+                $totalItems += $item['quantity'];
+                $subtotal += $itemTotal;
 
-        // Calculer les taxes (TVA 19.25%)
-        $taxAmount = ceil($subtotal * 0.1925);
-        $totalAmount = $subtotal + $taxAmount;
+                ShopOrderItem::create([
+                    'shop_order_id' => $order->id,
+                    'shop_product_id' => $product->id,
+                    'quantity' => $item['quantity'],
+                    'unit_price' => $product->price,
+                    'item_total' => $itemTotal,
+                ]);
 
-        // Mettre à jour la commande
-        $order->update([
-            'total_items' => $totalItems,
-            'subtotal' => $subtotal,
-            'tax_amount' => $taxAmount,
-            'total_amount' => $totalAmount,
-        ]);
+                // Décrémenter le stock
+                $product->decrement('stock_quantity', $item['quantity']);
+            }
+
+            // Calculer les taxes (TVA 19.25%)
+            $taxAmount = ceil($subtotal * 0.1925);
+            $totalAmount = $subtotal + $taxAmount;
+
+            // Mettre à jour la commande
+            $order->update([
+                'total_items' => $totalItems,
+                'subtotal' => $subtotal,
+                'tax_amount' => $taxAmount,
+                'total_amount' => $totalAmount,
+            ]);
+
+            // Si room_charge → créer la ligne folio et marquer payé immédiatement
+            if ($validated['payment_method'] === 'room_charge' && $booking) {
+                $folio = FolioItem::create([
+                    'tenant_id' => $booking->tenant_id,
+                    'booking_id' => $booking->id,
+                    'customer_id' => $booking->customer_id,
+                    'type' => FolioItem::TYPE_SHOP,
+                    'description' => "Boutique — Commande #{$order->order_number}",
+                    'quantity' => 1,
+                    'unit_price' => (int) $totalAmount,
+                    'total_price' => (int) $totalAmount,
+                    'is_complimentary' => false,
+                    'earns_points' => true,
+                    'recorded_by' => Auth::id(),
+                    'occurred_at' => now(),
+                    'notes' => $order->notes,
+                ]);
+
+                $order->update([
+                    'folio_item_id' => $folio->id,
+                    'payment_status' => 'paid',
+                    'paid_at' => now(),
+                ]);
+
+                // Recalculer les totaux du booking
+                app(CheckOutService::class)->recalculateTotals($booking->fresh());
+            }
+
+            return $order;
+        });
 
         return redirect()->route('shop.orders.show', $order)
             ->with('success', 'Commande créée avec succès');
@@ -192,7 +256,7 @@ class ShopOrderController extends Controller
 
     public function show(ShopOrder $order): View
     {
-        $order->load(['items.product', 'customer', 'booking.customer', 'createdBy']);
+        $order->load(['items.product', 'customer', 'booking.customer', 'booking.room', 'createdBy']);
 
         return view('shop.orders.show', [
             'order' => $order,
@@ -240,5 +304,14 @@ class ShopOrderController extends Controller
         ]);
 
         return back()->with('success', 'Remboursement effectué et stock restauré');
+    }
+
+    public function receipt(ShopOrder $order): View
+    {
+        $order->load(['items.product', 'customer', 'booking.room', 'createdBy']);
+
+        return view('shop.orders.receipt', [
+            'order' => $order,
+        ]);
     }
 }

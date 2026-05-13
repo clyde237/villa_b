@@ -93,6 +93,7 @@
 
         <div class="px-4 py-4 border-t border-secondary/15 bg-accent/10">
             <p class="text-xs font-semibold uppercase tracking-widest text-primary/45 mb-2">Statut</p>
+            @role('restaurant_chief', 'restaurant_staff')
             <form id="status-form" method="POST" action="{{ route('restaurant.orders.status', $order) }}" class="flex items-center gap-2">
                 @csrf
                 <select name="status" class="flex-1 px-3 py-2 text-sm border border-secondary/25 rounded-lg bg-white text-primary outline-none focus:border-secondary">
@@ -103,6 +104,9 @@
                 <button type="submit" class="px-4 py-2 text-xs font-semibold rounded-lg bg-primary text-white">OK</button>
             </form>
             <p id="status-hint" class="text-[11px] text-primary/45 mt-2 hidden">Statut mis a jour.</p>
+            @else
+                <p class="text-xs text-primary/40 italic text-center py-2">Consultation uniquement — actions réservées au personnel du restaurant.</p>
+            @endrole
         </div>
     </aside>
 </div>

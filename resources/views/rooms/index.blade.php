@@ -67,13 +67,30 @@
 <div class="flex items-center justify-between gap-4 mb-4">
     <div class="flex items-center gap-2 flex-wrap">
         @php
-        $filters = [
-        'all' => 'Tous',
-        'available' => 'Disponibles',
-        'occupied' => 'Occupées',
-        'out_of_order' => 'Hors service',
-        'maintenance' => 'Maintenance',
-        ];
+        $user = auth()->user();
+        $isHousekeepingOnly = $user->hasAnyRole(['housekeeping', 'housekeeping_chief', 'housekeeping_staff', 'housekeeping_leader']) && !$user->hasAnyRole(['manager', 'reception']);
+
+        if ($isHousekeepingOnly) {
+            $filters = [
+                'all' => 'Toutes',
+                'dirty' => 'Sale',
+                'cleaning' => 'En nettoyage',
+                'clean' => 'Propre',
+                'inspected' => 'Contrôlée',
+                'maintenance' => 'Maintenance',
+            ];
+        } else {
+            $filters = [
+                'all' => 'Toutes',
+                'available' => 'Disponibles',
+                'occupied' => 'Occupées',
+                'dirty' => 'Sale',
+                'cleaning' => 'Nettoyage',
+                'clean' => 'Propre',
+                'maintenance' => 'Maintenance',
+                'out_of_order' => 'Hors service',
+            ];
+        }
         @endphp
         @foreach($filters as $value => $label)
         <a href="{{ route('rooms.index', array_merge(request()->query(), ['tab' => 'rooms', 'status' => $value])) }}"
@@ -236,63 +253,83 @@
     'out_of_order' => ['border' => 'border-red-200', 'dot' => 'bg-red-400', 'badge' => 'bg-red-50 text-red-700'],
     ];
     $c = $cardColors[$room->status->value] ?? ['border' => 'border-secondary/20', 'dot' => 'bg-secondary', 'badge' => 'bg-secondary/10 text-primary/60'];
+    $roomImages = $room->images;
     @endphp
-    <div class="bg-white rounded-xl border {{ $c['border'] }} p-4 shadow-sm hover:shadow-md transition-shadow">
-        <div class="flex items-start justify-between mb-3">
-            <div>
-                <div class="flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full {{ $c['dot'] }}"></span>
-                    <span class="font-heading font-semibold text-primary text-lg">{{ $room->number }}</span>
-                </div>
-                <p class="text-xs text-primary/50 mt-0.5">{{ $room->roomType->name }}</p>
-            </div>
-            <span class="text-xs font-medium px-2 py-0.5 rounded-full {{ $c['badge'] }}">
-                {{ $room->status->label() }}
-            </span>
-        </div>
-
-        <div class="space-y-1 mb-4">
-            @if($room->floor)
-            <div class="flex items-center gap-1.5 text-xs text-primary/50">
-                <i data-lucide="building-2" class="w-3 h-3"></i>
-                Étage {{ $room->floor }}
-            </div>
-            @endif
-            @if($room->view_type)
-            <div class="flex items-center gap-1.5 text-xs text-primary/50 capitalize">
-                <i data-lucide="eye" class="w-3 h-3"></i>
-                Vue {{ $room->view_type }}
-            </div>
-            @endif
-            <div class="flex items-center gap-1.5 text-xs text-primary/50">
-                <i data-lucide="users" class="w-3 h-3"></i>
-                {{ $room->roomType->base_capacity }} pers.
-            </div>
-        </div>
-
-        <div class="flex items-center justify-end gap-1 pt-3 border-t border-secondary/10">
-            <a href="{{ route('rooms.show', $room) }}"
-                class="p-1.5 text-primary/30 hover:text-primary transition-colors rounded">
-                <i data-lucide="settings" class="w-3.5 h-3.5"></i>
-            </a>
-            <button
-                data-id="{{ $room->id }}"
-                data-number="{{ $room->number }}"
-                data-type="{{ $room->room_type_id }}"
-                data-floor="{{ $room->floor }}"
-                data-view="{{ $room->view_type }}"
-                onclick="openEditRoom(this)"
-                class="p-1.5 text-primary/30 hover:text-primary transition-colors rounded">
-                <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+    <div class="bg-white rounded-xl border {{ $c['border'] }} shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+        {{-- Image Slideshow --}}
+        @if($roomImages->count() > 0)
+        <div class="relative aspect-[4/3] bg-gray-100 group/slide" x-data="{
+                current: 0,
+                total: {{ $roomImages->count() }},
+                timer: null,
+                init() {
+                    if (this.total > 1) this.startAuto();
+                },
+                destroy() { clearInterval(this.timer); },
+                startAuto() { this.timer = setInterval(() => { this.current = (this.current + 1) % this.total; }, 3000); },
+                pauseAuto() { clearInterval(this.timer); },
+                resumeAuto() { if (this.total > 1) this.startAuto(); }
+            }"
+            @mouseenter="pauseAuto()"
+            @mouseleave="resumeAuto()">
+            @foreach($roomImages as $idx => $img)
+            <img src="{{ asset('storage/' . $img->path) }}" alt="Chambre {{ $room->number }}" class="absolute inset-0 w-full h-full object-cover transition-opacity duration-300" :class="current === {{ $idx }} ? 'opacity-100' : 'opacity-0 pointer-events-none'" @click="$dispatch('open-lightbox', { images: {{ $roomImages->pluck('path')->map(fn($p) => asset('storage/'.$p))->toJson() }}, index: current })">
+            @endforeach
+            @if($roomImages->count() > 1)
+            <button @click.stop="current = (current - 1 + total) % total" class="absolute left-1.5 top-1/2 -translate-y-1/2 w-7 h-7 bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white rounded-full flex items-center justify-center opacity-0 group-hover/slide:opacity-100 transition-opacity">
+                <i data-lucide="chevron-left" class="w-4 h-4"></i>
             </button>
-            <form method="POST" action="{{ route('rooms.destroy', $room) }}"
-                onsubmit="return confirm('Supprimer la chambre {{ $room->number }} ?')"
-                class="expect-popup">
-                @csrf @method('DELETE')
-                <button type="submit" class="p-1.5 text-primary/30 hover:text-red-500 transition-colors rounded">
-                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                </button>
-            </form>
+            <button @click.stop="current = (current + 1) % total" class="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white rounded-full flex items-center justify-center opacity-0 group-hover/slide:opacity-100 transition-opacity">
+                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+            </button>
+            <div class="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                <template x-for="i in total" :key="i">
+                    <button @click.stop="current = i - 1" class="w-1.5 h-1.5 rounded-full transition-all" :class="current === i - 1 ? 'bg-white w-3' : 'bg-white/50'"></button>
+                </template>
+            </div>
+            @endif
+            <div class="absolute top-2 left-2 flex items-center gap-1">
+                <span class="w-2 h-2 rounded-full {{ $c['dot'] }}"></span>
+            </div>
+            <div class="absolute top-2 right-2">
+                <span class="text-[10px] font-medium px-2 py-0.5 rounded-full backdrop-blur-sm bg-white/80 {{ $c['badge'] }}">{{ $room->status->label() }}</span>
+            </div>
+            <button @click.stop="$dispatch('open-lightbox', { images: {{ $roomImages->pluck('path')->map(fn($p) => asset('storage/'.$p))->toJson() }}, index: current })" class="absolute bottom-2 right-2 w-7 h-7 bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white rounded-full flex items-center justify-center opacity-0 group-hover/slide:opacity-100 transition-opacity" title="Agrandir">
+                <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
+            </button>
+        </div>
+        @else
+        <div class="relative aspect-[4/3] bg-gray-50 flex flex-col items-center justify-center text-primary/15">
+            <i data-lucide="image" class="w-10 h-10 mb-1"></i>
+            <span class="text-[9px] uppercase tracking-wider font-medium">Pas de photo</span>
+            <div class="absolute top-2 left-2 flex items-center gap-1"><span class="w-2 h-2 rounded-full {{ $c['dot'] }}"></span></div>
+        </div>
+        @endif
+
+        <div class="p-4">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <span class="font-heading font-semibold text-primary text-lg">{{ $room->number }}</span>
+                    <p class="text-xs text-primary/50 mt-0.5">{{ $room->roomType->name }}</p>
+                </div>
+                @if($roomImages->isEmpty())
+                <span class="text-xs font-medium px-2 py-0.5 rounded-full {{ $c['badge'] }}">{{ $room->status->label() }}</span>
+                @endif
+            </div>
+            <div class="space-y-1 mb-3">
+                @if($room->floor)
+                <div class="flex items-center gap-1.5 text-xs text-primary/50"><i data-lucide="building-2" class="w-3 h-3"></i> Étage {{ $room->floor }}</div>
+                @endif
+                @if($room->view_type)
+                <div class="flex items-center gap-1.5 text-xs text-primary/50 capitalize"><i data-lucide="eye" class="w-3 h-3"></i> Vue {{ $room->view_type }}</div>
+                @endif
+                <div class="flex items-center gap-1.5 text-xs text-primary/50"><i data-lucide="users" class="w-3 h-3"></i> {{ $room->roomType->base_capacity }} pers.</div>
+            </div>
+            <div class="flex items-center justify-end gap-1 pt-3 border-t border-secondary/10">
+                <a href="{{ route('rooms.show', $room) }}" class="p-1.5 text-primary/30 hover:text-primary transition-colors rounded"><i data-lucide="settings" class="w-3.5 h-3.5"></i></a>
+                <button data-id="{{ $room->id }}" data-number="{{ $room->number }}" data-type="{{ $room->room_type_id }}" data-floor="{{ $room->floor }}" data-view="{{ $room->view_type }}" onclick="openEditRoom(this)" class="p-1.5 text-primary/30 hover:text-primary transition-colors rounded"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>
+                <form method="POST" action="{{ route('rooms.destroy', $room) }}" onsubmit="return confirm('Supprimer la chambre {{ $room->number }} ?')" class="expect-popup">@csrf @method('DELETE')<button type="submit" class="p-1.5 text-primary/30 hover:text-red-500 transition-colors rounded"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button></form>
+            </div>
         </div>
     </div>
     @endforeach
@@ -404,7 +441,7 @@
                 <i data-lucide="x" class="w-5 h-5"></i>
             </button>
         </div>
-        <form method="POST" action="{{ route('rooms.store') }}" class="px-6 py-5 space-y-4 expect-popup">
+        <form method="POST" action="{{ route('rooms.store') }}" enctype="multipart/form-data" class="px-6 py-5 space-y-4 expect-popup">
             @csrf
             <div>
                 <label class="modal-label">Type de chambre *</label>
@@ -440,6 +477,22 @@
                 <label class="modal-label">Notes internes</label>
                 <textarea name="notes" rows="2" placeholder="Notes optionnelles..." class="modal-input resize-none"></textarea>
             </div>
+            <div x-data="multiImagePreview()">
+                <label class="modal-label">Photos (max 4)</label>
+                <div @click="$refs.fileInput.click()" @dragover.prevent="isDragging=true" @dragleave.prevent="isDragging=false" @drop.prevent="handleDrop($event)" :class="isDragging ? 'border-primary bg-primary/5' : 'border-gray-300 hover:border-primary/40'" class="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-all">
+                    <i data-lucide="image-plus" class="w-6 h-6 mx-auto text-primary/30 mb-1"></i>
+                    <p class="text-xs text-primary/50">Cliquez ou glissez · JPG, PNG, WebP · Max 3 Mo/image</p>
+                </div>
+                <input type="file" name="images[]" x-ref="fileInput" @change="handleFiles($event)" accept="image/*" multiple class="hidden">
+                <div x-show="previews.length > 0" class="grid grid-cols-4 gap-2 mt-3">
+                    <template x-for="(p, i) in previews" :key="i">
+                        <div class="relative rounded-lg overflow-hidden aspect-square bg-gray-100">
+                            <img :src="p" class="w-full h-full object-cover">
+                            <button type="button" @click="removeImage(i)" class="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600">×</button>
+                        </div>
+                    </template>
+                </div>
+            </div>
             <div class="flex justify-end gap-3 pt-2">
                 <button type="button" onclick="document.getElementById('modal-create-room').classList.add('hidden')"
                     class="px-4 py-2 text-sm text-primary/60 hover:text-primary transition-colors">Annuler</button>
@@ -462,7 +515,7 @@
                 <i data-lucide="x" class="w-5 h-5"></i>
             </button>
         </div>
-        <form id="form-edit-room" method="POST" action="" class="px-6 py-5 space-y-4 expect-popup">
+        <form id="form-edit-room" method="POST" action="" enctype="multipart/form-data" class="px-6 py-5 space-y-4 expect-popup">
             @csrf @method('PUT')
             <div>
                 <label class="modal-label">Type de chambre *</label>
@@ -492,6 +545,22 @@
                     <option value="courtyard">Courtyard</option>
                     <option value="city">City</option>
                 </select>
+            </div>
+            <div x-data="multiImagePreview()">
+                <label class="modal-label">Ajouter des photos (max 4 au total)</label>
+                <div @click="$refs.fileInput.click()" @dragover.prevent="isDragging=true" @dragleave.prevent="isDragging=false" @drop.prevent="handleDrop($event)" :class="isDragging ? 'border-primary bg-primary/5' : 'border-gray-300 hover:border-primary/40'" class="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-all">
+                    <i data-lucide="image-plus" class="w-6 h-6 mx-auto text-primary/30 mb-1"></i>
+                    <p class="text-xs text-primary/50">Cliquez ou glissez · JPG, PNG, WebP · Max 3 Mo/image</p>
+                </div>
+                <input type="file" name="images[]" x-ref="fileInput" @change="handleFiles($event)" accept="image/*" multiple class="hidden">
+                <div x-show="previews.length > 0" class="grid grid-cols-4 gap-2 mt-3">
+                    <template x-for="(p, i) in previews" :key="i">
+                        <div class="relative rounded-lg overflow-hidden aspect-square bg-gray-100">
+                            <img :src="p" class="w-full h-full object-cover">
+                            <button type="button" @click="removeImage(i)" class="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600">×</button>
+                        </div>
+                    </template>
+                </div>
             </div>
             <div class="flex justify-end gap-3 pt-2">
                 <button type="button" onclick="document.getElementById('modal-edit-room').classList.add('hidden')"
@@ -662,5 +731,134 @@
         });
     });
 </script>
+
+{{-- Lightbox --}}
+<div x-data="lightbox()" x-show="open" x-cloak
+     @open-lightbox.window="openLightbox($event.detail)"
+     @keydown.escape.window="open = false"
+     @keydown.arrow-left.window="prev()"
+     @keydown.arrow-right.window="next()"
+     class="fixed inset-0 z-[100] flex items-center justify-center"
+     x-transition:enter="transition ease-out duration-200"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-150"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0"
+     style="display:none;">
+    <div class="absolute inset-0 bg-black/85 backdrop-blur-sm" @click="open = false"></div>
+    <div class="relative z-10 max-w-5xl max-h-[90vh] w-full mx-4">
+        <img :src="images[current]" class="w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" alt="Photo chambre">
+
+        {{-- Compteur --}}
+        <div class="absolute top-4 left-4 text-white/80 text-sm font-medium bg-black/40 backdrop-blur-sm px-3 py-1 rounded-full">
+            <span x-text="(current + 1) + ' / ' + images.length"></span>
+        </div>
+
+        {{-- Fermer --}}
+        <button @click="open = false" class="absolute top-4 right-4 w-10 h-10 bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white rounded-full flex items-center justify-center transition-colors">
+            <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+
+        {{-- Navigation --}}
+        <template x-if="images.length > 1">
+            <div>
+                <button @click="prev()" class="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white rounded-full flex items-center justify-center transition-colors">
+                    <i data-lucide="chevron-left" class="w-6 h-6"></i>
+                </button>
+                <button @click="next()" class="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white rounded-full flex items-center justify-center transition-colors">
+                    <i data-lucide="chevron-right" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </template>
+
+        {{-- Vignettes --}}
+        <div x-show="images.length > 1" class="flex justify-center gap-2 mt-4">
+            <template x-for="(img, i) in images" :key="i">
+                <button @click="current = i" class="w-16 h-12 rounded-lg overflow-hidden border-2 transition-all" :class="i === current ? 'border-white shadow-lg' : 'border-transparent opacity-60 hover:opacity-100'">
+                    <img :src="img" class="w-full h-full object-cover">
+                </button>
+            </template>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('multiImagePreview', () => ({
+        previews: [],
+        files: [],
+        isDragging: false,
+
+        handleFiles(event) {
+            const newFiles = Array.from(event.target.files);
+            this.addFiles(newFiles);
+        },
+
+        handleDrop(event) {
+            this.isDragging = false;
+            const newFiles = Array.from(event.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+            this.addFiles(newFiles);
+        },
+
+        addFiles(newFiles) {
+            const maxTotal = 4;
+            const remaining = maxTotal - this.previews.length;
+            const toAdd = newFiles.slice(0, remaining);
+
+            toAdd.forEach(file => {
+                if (file.size > 3 * 1024 * 1024) {
+                    alert('Image trop volumineuse (max 3 Mo) : ' + file.name);
+                    return;
+                }
+                this.files.push(file);
+                this.previews.push(URL.createObjectURL(file));
+            });
+
+            // Rebuild file input
+            this.$nextTick(() => {
+                const dt = new DataTransfer();
+                this.files.forEach(f => dt.items.add(f));
+                this.$refs.fileInput.files = dt.files;
+            });
+        },
+
+        removeImage(index) {
+            this.previews.splice(index, 1);
+            this.files.splice(index, 1);
+            const dt = new DataTransfer();
+            this.files.forEach(f => dt.items.add(f));
+            this.$refs.fileInput.files = dt.files;
+        }
+    }));
+
+    Alpine.data('lightbox', () => ({
+        open: false,
+        images: [],
+        current: 0,
+
+        openLightbox(detail) {
+            this.images = detail.images;
+            this.current = detail.index || 0;
+            this.open = true;
+            this.$nextTick(() => { if (window.refreshLucideIcons) window.refreshLucideIcons(); });
+        },
+
+        next() {
+            if (this.open && this.images.length > 1) {
+                this.current = (this.current + 1) % this.images.length;
+            }
+        },
+
+        prev() {
+            if (this.open && this.images.length > 1) {
+                this.current = (this.current - 1 + this.images.length) % this.images.length;
+            }
+        }
+    }));
+});
+</script>
+@endpush
 
 @endsection

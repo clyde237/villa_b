@@ -21,6 +21,7 @@ class FolioItem extends Model
     // Types de prestations disponibles
     const TYPE_ROOM       = 'room';
     const TYPE_RESTAURANT = 'restaurant';
+    const TYPE_SHOP       = 'shop';
     const TYPE_ACTIVITY   = 'activity';
     const TYPE_SPA        = 'spa';
     const TYPE_MINIBAR    = 'minibar';
@@ -90,6 +91,7 @@ class FolioItem extends Model
         return match($this->type) {
             self::TYPE_ROOM       => 'Hébergement',
             self::TYPE_RESTAURANT => 'Restaurant',
+            self::TYPE_SHOP       => 'Boutique',
             self::TYPE_ACTIVITY   => 'Activité',
             self::TYPE_SPA        => 'Spa',
             self::TYPE_MINIBAR    => 'Minibar',
