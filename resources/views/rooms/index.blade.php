@@ -67,13 +67,30 @@
 <div class="flex items-center justify-between gap-4 mb-4">
     <div class="flex items-center gap-2 flex-wrap">
         @php
-        $filters = [
-        'all' => 'Tous',
-        'available' => 'Disponibles',
-        'occupied' => 'Occupées',
-        'out_of_order' => 'Hors service',
-        'maintenance' => 'Maintenance',
-        ];
+        $user = auth()->user();
+        $isHousekeepingOnly = $user->hasAnyRole(['housekeeping', 'housekeeping_chief', 'housekeeping_staff', 'housekeeping_leader']) && !$user->hasAnyRole(['manager', 'reception']);
+
+        if ($isHousekeepingOnly) {
+            $filters = [
+                'all' => 'Toutes',
+                'dirty' => 'Sale',
+                'cleaning' => 'En nettoyage',
+                'clean' => 'Propre',
+                'inspected' => 'Contrôlée',
+                'maintenance' => 'Maintenance',
+            ];
+        } else {
+            $filters = [
+                'all' => 'Toutes',
+                'available' => 'Disponibles',
+                'occupied' => 'Occupées',
+                'dirty' => 'Sale',
+                'cleaning' => 'Nettoyage',
+                'clean' => 'Propre',
+                'maintenance' => 'Maintenance',
+                'out_of_order' => 'Hors service',
+            ];
+        }
         @endphp
         @foreach($filters as $value => $label)
         <a href="{{ route('rooms.index', array_merge(request()->query(), ['tab' => 'rooms', 'status' => $value])) }}"
@@ -795,13 +812,8 @@ document.addEventListener('alpine:init', () => {
                     alert('Image trop volumineuse (max 3 Mo) : ' + file.name);
                     return;
                 }
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    this.previews.push(e.target.result);
-                    this.files.push(file);
-                    this.$nextTick(() => { if (window.refreshLucideIcons) window.refreshLucideIcons(); });
-                };
-                reader.readAsDataURL(file);
+                this.files.push(file);
+                this.previews.push(URL.createObjectURL(file));
             });
 
             // Rebuild file input

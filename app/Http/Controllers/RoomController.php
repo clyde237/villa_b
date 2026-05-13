@@ -35,13 +35,17 @@ class RoomController extends Controller
 
         $rooms = $roomsQuery->paginate(20)->withQueryString();
 
-        // Compteurs pour les filtres
+        // Compteurs pour tous les statuts
         $counts = [
             'all'           => Room::count(),
             'available'     => Room::where('status', RoomStatus::AVAILABLE)->count(),
             'occupied'      => Room::where('status', RoomStatus::OCCUPIED)->count(),
-            'out_of_order'  => Room::where('status', RoomStatus::OUT_OF_ORDER)->count(),
+            'dirty'         => Room::where('status', RoomStatus::DIRTY)->count(),
+            'cleaning'      => Room::where('status', RoomStatus::CLEANING)->count(),
+            'clean'         => Room::where('status', RoomStatus::CLEAN)->count(),
+            'inspected'     => Room::where('status', RoomStatus::INSPECTED)->count(),
             'maintenance'   => Room::where('status', RoomStatus::MAINTENANCE)->count(),
+            'out_of_order'  => Room::where('status', RoomStatus::OUT_OF_ORDER)->count(),
         ];
 
         // --- Données onglet Types ---
@@ -173,6 +177,26 @@ class RoomController extends Controller
             return back()->withErrors([
                 'status' => "Transition impossible : {$room->status->label()} → {$newStatus->label()}"
             ]);
+        }
+
+        // Vérification des permissions spécifiques au housekeeping
+        $user = Auth::user();
+        $isHousekeepingOnly = $user->hasAnyRole(['housekeeping', 'housekeeping_chief', 'housekeeping_staff', 'housekeeping_leader']) && !$user->hasAnyRole(['manager', 'reception']);
+        
+        if ($isHousekeepingOnly) {
+            $housekeepingStatuses = [
+                RoomStatus::DIRTY,
+                RoomStatus::CLEANING,
+                RoomStatus::CLEAN,
+                RoomStatus::INSPECTED,
+                RoomStatus::MAINTENANCE,
+            ];
+
+            if (!in_array($newStatus, $housekeepingStatuses)) {
+                return back()->withErrors([
+                    'status' => "Vous n'avez pas la permission d'appliquer le statut {$newStatus->label()}."
+                ]);
+            }
         }
 
         $room->updateStatus($newStatus, $validated['reason'] ?? null);
