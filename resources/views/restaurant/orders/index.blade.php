@@ -9,12 +9,14 @@
         <p class="text-sm text-primary/50 mt-0.5">Commandes du portail client et commandes saisies par le staff</p>
     </div>
 
+    @role('restaurant_chief', 'restaurant_staff')
     <button type="button"
         onclick="openCreateOrderModal()"
         class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white text-xs font-semibold rounded-lg hover:opacity-95 transition-opacity">
         <i data-lucide="plus" class="w-3.5 h-3.5"></i>
         Nouvelle commande
     </button>
+    @endrole
 </div>
 
 @if(session('success'))
@@ -129,6 +131,7 @@
     @endif
 </div>
 
+@role('restaurant_chief', 'restaurant_staff')
 {{-- Create order modal --}}
 <div id="create-order-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-black/40" onclick="closeCreateOrderModal()"></div>
@@ -232,6 +235,7 @@
         </div>
     </div>
 </div>
+@endrole
 
 <script>
 const cart = new Map(); // id -> qty

@@ -75,6 +75,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/{room}',          [RoomController::class, 'update'])->middleware('role:manager')->name('update');
         Route::delete('/{room}',       [RoomController::class, 'destroy'])->middleware('role:manager')->name('destroy');
         Route::post('/{room}/status',  [RoomController::class, 'updateStatus'])->middleware('role:manager,reception,housekeeping_leader,housekeeping_staff,housekeeping')->name('updateStatus');
+        Route::delete('/{room}/images/{image}', [RoomController::class, 'destroyImage'])->middleware('role:manager')->name('images.destroy');
 
         // Types de chambres - seulement manager
         Route::post('/types/store',         [RoomController::class, 'storeType'])->middleware('role:manager')->name('types.store');
@@ -212,12 +213,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Écriture SHOP — manager totalement exclu
     Route::prefix('shop')->name('shop.')->middleware('role:shop_manager,shop_cashier')->group(function () {
-        // Caisse
+        // Caisse — ouverture : shop_manager + shop_cashier
         Route::get('/cash-register/open', [CashRegisterController::class, 'showOpenForm'])->name('cash_register.open');
         Route::post('/cash-register/open', [CashRegisterController::class, 'open'])->name('cash_register.open.store');
-        Route::get('/cash-register/close', [CashRegisterController::class, 'showCloseForm'])->name('cash_register.close');
-        Route::post('/cash-register/close', [CashRegisterController::class, 'close'])->name('cash_register.close.store');
         Route::post('/cash-register/disbursements', [CashRegisterController::class, 'storeDisbursement'])->name('cash_register.disbursements.store');
+
+        // Caisse — fermeture : shop_manager uniquement
+        Route::middleware('role:shop_manager')->group(function () {
+            Route::get('/cash-register/close', [CashRegisterController::class, 'showCloseForm'])->name('cash_register.close');
+            Route::post('/cash-register/close', [CashRegisterController::class, 'close'])->name('cash_register.close.store');
+        });
 
         // Commandes
         Route::get('/orders/create', [ShopOrderController::class, 'create'])->name('orders.create');

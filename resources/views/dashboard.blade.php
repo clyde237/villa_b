@@ -217,9 +217,11 @@
                         <a href="{{ route('shop.orders.create') }}" class="bg-primary hover:bg-[#4a2a14] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm inline-flex items-center">
                             <i data-lucide="plus" class="w-4 h-4 mr-2"></i> Nouvelle commande
                         </a>
+                        @role('shop_manager')
                         <a href="{{ route('shop.cash_register.close') }}" class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm inline-flex items-center" title="Fermer la caisse">
                             <i data-lucide="lock" class="w-4 h-4"></i>
                         </a>
+                        @endrole
                     @endif
                     @else
                         <span class="text-xs text-primary/40 italic">Consultation uniquement</span>
