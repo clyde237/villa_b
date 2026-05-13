@@ -182,4 +182,12 @@ class User extends Authenticatable
         // Utilisateur doit appartenir au même tenant
         return $this->tenant_id === $tenantId;
     }
+
+    /**
+     * Check if the user is currently online.
+     */
+    public function isOnline(): bool
+    {
+        return \Illuminate\Support\Facades\Cache::has('user-is-online-' . $this->id);
+    }
 }

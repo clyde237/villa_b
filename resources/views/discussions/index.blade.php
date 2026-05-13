@@ -105,7 +105,21 @@
                         </div>
                         <div>
                             <h2 class="text-sm font-semibold text-primary">{{ $title }}</h2>
-                            <p class="text-xs text-primary/40">{{ $selectedConversation->participants->count() }} participant{{ $selectedConversation->participants->count() > 1 ? 's' : '' }}</p>
+                            @if($other)
+                                <div class="flex items-center gap-1.5 mt-0.5">
+                                    <span class="relative flex h-2.5 w-2.5">
+                                      @if($other->isOnline())
+                                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                                      @else
+                                          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-gray-300"></span>
+                                      @endif
+                                    </span>
+                                    <p class="text-[11px] font-medium text-primary/50">
+                                        {{ $other->isOnline() ? 'En ligne' : 'Hors ligne' }}
+                                    </p>
+                                </div>
+                            @endif
                         </div>
                     </header>
 
@@ -579,6 +593,7 @@ if (chatContainer) {
                     lastMessageId = Math.max(lastMessageId, Number(message.id));
                 });
                 scrollToBottom();
+                if (window.playNotificationSound) window.playNotificationSound();
             }
 
             updateUnreadUI(payload.unread_counts || {}, payload.total_unread || 0);
