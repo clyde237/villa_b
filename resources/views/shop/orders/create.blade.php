@@ -18,75 +18,128 @@
         </div>
     </div>
 
-    <form action="{{ route('shop.orders.store') }}" method="POST" class="space-y-6" x-data="orderItemsDef(@js($products))">
+    @if ($errors->any())
+        <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800">
+            <i data-lucide="alert-circle" class="w-5 h-5 inline mr-2"></i>
+            <strong>Erreur :</strong>
+            <ul class="mt-2 list-disc list-inside text-sm">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
+    <form action="{{ route('shop.orders.store') }}" method="POST" class="space-y-6" x-data="shopOrderForm(@js($products), @js($bookings))">
         @csrf
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Formulaire de commande -->
             <div class="lg:col-span-2 space-y-6">
-                <!-- Informations client (Avec recherche et création rapide) -->
-                <div class="bg-white rounded-xl shadow-sm border border-secondary/10 p-6 flex flex-col gap-4 relative overflow-hidden">
+                <!-- Informations client / Chambre -->
+                <div class="bg-white rounded-xl shadow-sm border border-secondary/10 p-6 relative overflow-hidden">
                     <div class="absolute top-0 left-0 w-1 h-full bg-blue-400"></div>
-                    <div class="flex items-center pb-3 border-b border-secondary/10">
+                    <div class="flex items-center pb-3 border-b border-secondary/10 mb-4">
                         <i data-lucide="user" class="w-5 h-5 text-primary mr-2"></i>
-                        <h2 class="text-lg font-heading font-semibold text-primary">Informations Client</h2>
+                        <h2 class="text-lg font-heading font-semibold text-primary">Client ou Chambre</h2>
                     </div>
 
-                    <div>
-                        <label class="block text-xs font-semibold uppercase tracking-widest text-primary/50 mb-1.5">Rechercher un client *</label>
+                    <!-- Tabs: Client / Chambre -->
+                    <div class="flex gap-2 mb-5">
+                        <button type="button"
+                                @click="clientMode = 'customer'"
+                                :class="clientMode === 'customer' ? 'bg-primary text-white' : 'bg-gray-100 text-primary/60 hover:text-primary'"
+                                class="px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2">
+                            <i data-lucide="user" class="w-4 h-4"></i>
+                            Client
+                        </button>
+                        <button type="button"
+                                @click="clientMode = 'room'; clearCustomer()"
+                                :class="clientMode === 'room' ? 'bg-primary text-white' : 'bg-gray-100 text-primary/60 hover:text-primary'"
+                                class="px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2">
+                            <i data-lucide="bed" class="w-4 h-4"></i>
+                            Chambre (résident)
+                        </button>
+                    </div>
+
+                    <!-- Mode Client -->
+                    <div x-show="clientMode === 'customer'" x-transition>
                         <x-customer-search 
                             :customers="$customers" 
-                        name="customer_id" 
-                        :value="old('customer_id')" 
-                        :allow-creation="true"
-                        creation-label="Créer vite fait"
-                    >
-                        <div class="flex justify-between items-center bg-blue-50/50 text-blue-800 p-3 rounded-lg border border-blue-100/50 mb-4">
-                            <div class="flex items-center">
-                                <i data-lucide="user-plus" class="w-4 h-4 mr-2"></i>
-                                <span class="font-medium text-sm">Création d'un nouveau client</span>
-                            </div>
-                            <button type="button" @click="cancelCreatingNew()" class="text-xs font-medium hover:underline focus:outline-none text-blue-600">Annuler</button>
-                        </div>
-
-                        <input type="hidden" name="create_customer" :value="isCreatingNew ? '1' : '0'">
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 px-1">
-                            <div>
-                                <label class="block text-xs font-semibold uppercase tracking-widest text-primary/50 mb-1.5">Prénom *</label>
-                                <input type="text" name="customer_first_name" x-model="customerFirstName" :required="isCreatingNew"
-                                       class="w-full px-3 py-2 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary transition-colors">
+                            name="customer_id" 
+                            :value="old('customer_id')" 
+                            :allow-creation="true"
+                            creation-label="Créer vite fait"
+                        >
+                            <div class="flex justify-between items-center bg-blue-50/50 text-blue-800 p-3 rounded-lg border border-blue-100/50 mb-4">
+                                <div class="flex items-center">
+                                    <i data-lucide="user-plus" class="w-4 h-4 mr-2"></i>
+                                    <span class="font-medium text-sm">Création d'un nouveau client</span>
+                                </div>
+                                <button type="button" @click="cancelCreatingNew()" class="text-xs font-medium hover:underline focus:outline-none text-blue-600">Annuler</button>
                             </div>
 
-                            <div>
-                                <label class="block text-xs font-semibold uppercase tracking-widest text-primary/50 mb-1.5">Nom *</label>
-                                <input type="text" name="customer_name" x-model="customerName" :required="isCreatingNew"
-                                       class="w-full px-3 py-2 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary transition-colors @error('customer_name') border-red-500 @enderror">
-                                @error('customer_name')
-                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                                @enderror
-                            </div>
+                            <input type="hidden" name="create_customer" :value="isCreatingNew ? '1' : '0'">
 
-                            <div>
-                                <label class="block text-xs font-semibold uppercase tracking-widest text-primary/50 mb-1.5">Téléphone</label>
-                                <input type="text" name="customer_phone" x-model="customerPhone"
-                                       class="w-full px-3 py-2 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary transition-colors">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 px-1">
+                                <div>
+                                    <label class="block text-xs font-semibold uppercase tracking-widest text-primary/50 mb-1.5">Prénom *</label>
+                                    <input type="text" name="customer_first_name" x-model="customerFirstName" :required="isCreatingNew"
+                                           class="w-full px-3 py-2 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary transition-colors">
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-semibold uppercase tracking-widest text-primary/50 mb-1.5">Nom *</label>
+                                    <input type="text" name="customer_name" x-model="customerName" :required="isCreatingNew"
+                                           class="w-full px-3 py-2 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary transition-colors @error('customer_name') border-red-500 @enderror">
+                                    @error('customer_name')
+                                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                    @enderror
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-semibold uppercase tracking-widest text-primary/50 mb-1.5">Téléphone</label>
+                                    <input type="text" name="customer_phone" x-model="customerPhone"
+                                           class="w-full px-3 py-2 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary transition-colors">
+                                </div>
                             </div>
-                        </div>
-                    </x-customer-search>
+                        </x-customer-search>
                     </div>
 
-                    <div class="mt-2 pt-4 border-t border-secondary/10">
-                        <label class="block text-xs font-semibold uppercase tracking-widest text-primary/50 mb-1.5">Associé à une chambre (Optionnel)</label>
-                        <select name="booking_id"
-                                class="w-full px-3 py-2.5 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary transition-colors">
-                            <option value="">-- Ignorer --</option>
+                    <!-- Mode Chambre (résident) -->
+                    <div x-show="clientMode === 'room'" x-transition>
+                        <label class="block text-xs font-semibold uppercase tracking-widest text-primary/50 mb-1.5">Sélectionner une chambre (séjour en cours) *</label>
+                        <select name="booking_id" x-model="selectedBookingId"
+                                @change="onBookingSelected()"
+                                class="w-full px-3 py-2.5 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary transition-colors @error('booking_id') border-red-500 @enderror">
+                            <option value="">-- Choisir une chambre --</option>
                             @foreach ($bookings as $booking)
                                 <option value="{{ $booking->id }}" {{ old('booking_id') == $booking->id ? 'selected' : '' }}>
-                                    Chambre {{ $booking->room?->number ?? '—' }} ({{ $booking->customer?->full_name ?? '—' }})
+                                    Chambre {{ $booking->room?->number ?? '—' }} — {{ $booking->customer?->first_name }} {{ $booking->customer?->last_name }}
                                 </option>
                             @endforeach
                         </select>
+                        @error('booking_id')
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                        @enderror
+
+                        <!-- Info résident sélectionné -->
+                        <div x-show="selectedBookingId" x-transition class="mt-4 p-4 bg-blue-50/50 rounded-lg border border-blue-100/50">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                                    <i data-lucide="bed" class="w-5 h-5 text-white"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-primary text-sm" x-text="selectedBookingLabel"></p>
+                                    <p class="text-xs text-primary/50">L'achat sera ajouté au folio de la chambre</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Champs cachés pour les infos client venant de la chambre -->
+                        <template x-if="clientMode === 'room'">
+                            <input type="hidden" name="customer_name" :value="roomCustomerName">
+                        </template>
                     </div>
                 </div>
 
@@ -160,7 +213,7 @@
                         </div>
 
                         <label class="block text-xs font-semibold uppercase tracking-widest text-primary/50 mb-1.5">Méthode de règlement *</label>
-                        <select name="payment_method" required
+                        <select name="payment_method" x-model="paymentMethod" required
                                 class="w-full px-3 py-2 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary transition-colors @error('payment_method') border-red-500 @enderror">
                             <option value="">-- Sélectionner --</option>
                             <option value="cash" {{ old('payment_method') === 'cash' ? 'selected' : '' }}>Espèces</option>
@@ -172,6 +225,13 @@
                         @error('payment_method')
                             <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                         @enderror
+
+                        <!-- Alerte si room_charge sans chambre -->
+                        <div x-show="paymentMethod === 'room_charge' && clientMode !== 'room'" x-transition
+                             class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-xs flex items-start gap-2">
+                            <i data-lucide="alert-triangle" class="w-4 h-4 flex-shrink-0 mt-0.5"></i>
+                            <span>Pour débiter sur la chambre, veuillez d'abord sélectionner une chambre dans l'onglet <strong>"Chambre (résident)"</strong> ci-dessus.</span>
+                        </div>
                     </div>
 
                     <!-- Notes -->
@@ -215,6 +275,13 @@
                                 <span class="text-2xl font-heading font-bold text-primary" x-text="formatPrice(total)">0 FCFA</span>
                             </div>
                         </div>
+
+                        <!-- Info mode de paiement -->
+                        <div x-show="paymentMethod === 'room_charge' && selectedBookingId" x-transition
+                             class="bg-blue-50/50 p-3 rounded-lg border border-blue-100/50 text-xs text-blue-800">
+                            <i data-lucide="info" class="w-3.5 h-3.5 inline mr-1"></i>
+                            Le montant sera ajouté au folio de la chambre. Paiement automatique.
+                        </div>
                     </div>
 
                     <div class="bg-gray-50/50 p-6 border-t border-secondary/10 space-y-3">
@@ -231,4 +298,117 @@
         </div>
     </form>
 </div>
+
+@push('scripts')
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('shopOrderForm', function(products = [], bookings = []) {
+        return {
+            products: products,
+            bookingsData: bookings,
+            clientMode: '{{ old("booking_id") ? "room" : "customer" }}',
+            selectedBookingId: '{{ old("booking_id", "") }}',
+            selectedBookingLabel: '',
+            roomCustomerName: '',
+            paymentMethod: '{{ old("payment_method", "") }}',
+            items: [
+                { id: Date.now(), product_id: '', quantity: 1, search: '', showDropdown: false }
+            ],
+
+            init() {
+                if (this.selectedBookingId) {
+                    this.onBookingSelected();
+                }
+                // Si mode chambre, forcer room_charge
+                this.$watch('clientMode', (mode) => {
+                    if (mode === 'room') {
+                        this.paymentMethod = 'room_charge';
+                    } else if (this.paymentMethod === 'room_charge') {
+                        this.paymentMethod = '';
+                    }
+                    setTimeout(() => { if (window.refreshLucideIcons) window.refreshLucideIcons(); }, 10);
+                });
+            },
+
+            clearCustomer() {
+                this.selectedBookingId = '';
+                this.selectedBookingLabel = '';
+                this.roomCustomerName = '';
+            },
+
+            onBookingSelected() {
+                const booking = this.bookingsData.find(b => b.id == this.selectedBookingId);
+                if (booking) {
+                    const customerName = (booking.customer?.first_name || '') + ' ' + (booking.customer?.last_name || '');
+                    const roomNumber = booking.room?.number || '—';
+                    this.selectedBookingLabel = `Chambre ${roomNumber} — ${customerName.trim()}`;
+                    this.roomCustomerName = booking.customer?.last_name || 'Client';
+                    this.paymentMethod = 'room_charge';
+                } else {
+                    this.selectedBookingLabel = '';
+                    this.roomCustomerName = '';
+                }
+                setTimeout(() => { if (window.refreshLucideIcons) window.refreshLucideIcons(); }, 10);
+            },
+
+            get subtotal() {
+                return this.items.reduce((sum, item) => {
+                    const product = this.products.find(p => p.id == item.product_id);
+                    if (product) {
+                        return sum + (product.price * item.quantity);
+                    }
+                    return sum;
+                }, 0);
+            },
+
+            get tax() {
+                return Math.ceil(this.subtotal * 0.1925);
+            },
+
+            get total() {
+                return this.subtotal + this.tax;
+            },
+
+            formatPrice(cents) {
+                const fcfa = Math.floor(cents / 100);
+                return new Intl.NumberFormat('fr-FR').format(fcfa) + ' FCFA';
+            },
+
+            addItem() {
+                this.items.push({ id: Date.now(), product_id: '', quantity: 1, search: '', showDropdown: false });
+                setTimeout(() => { if (window.refreshLucideIcons) window.refreshLucideIcons(); }, 10);
+            },
+
+            removeItem(index) {
+                if (this.items.length > 1) {
+                    this.items.splice(index, 1);
+                }
+            },
+
+            filteredProducts(search) {
+                if (search === '') return this.products;
+                const term = search.toLowerCase();
+                return this.products.filter(p => p.name.toLowerCase().includes(term));
+            },
+
+            selectProduct(index, product) {
+                this.items[index].product_id = product.id;
+                this.items[index].search = product.name;
+                this.items[index].showDropdown = false;
+            },
+
+            getProductPrice(productId) {
+                const product = this.products.find(p => p.id == productId);
+                return product ? product.price : 0;
+            },
+
+            getItemTotal(item) {
+                return this.getProductPrice(item.product_id) * item.quantity;
+            }
+        };
+    });
+});
+</script>
+@endpush
+
 @endsection

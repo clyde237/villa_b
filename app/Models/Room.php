@@ -64,6 +64,11 @@ class Room extends Model
         return $this->hasMany(Booking::class);
     }
 
+    public function images(): HasMany
+    {
+        return $this->hasMany(RoomImage::class)->orderBy('sort_order');
+    }
+
     public function housekeepingAssignments(): HasMany
     {
         return $this->hasMany(HousekeepingAssignment::class);

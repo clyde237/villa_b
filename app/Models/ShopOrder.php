@@ -18,6 +18,7 @@ class ShopOrder extends Model
         'tenant_id',
         'order_number',
         'booking_id',
+        'folio_item_id',
         'customer_id',
         'customer_name',
         'customer_phone',
@@ -56,6 +57,11 @@ class ShopOrder extends Model
     public function booking(): BelongsTo
     {
         return $this->belongsTo(Booking::class);
+    }
+
+    public function folioItem(): BelongsTo
+    {
+        return $this->belongsTo(FolioItem::class);
     }
 
     public function customer(): BelongsTo

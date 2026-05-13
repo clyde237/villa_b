@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Enums\RoomStatus;
 use App\Models\Room;
+use App\Models\RoomImage;
 use App\Models\RoomType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class RoomController extends Controller
 {
@@ -18,7 +20,7 @@ class RoomController extends Controller
         $search = $request->get('search');
 
         // --- Données onglet Chambres ---
-        $roomsQuery = Room::with(['roomType', 'activeHousekeepingAssignment.team'])->orderBy('floor')->orderBy('number');
+        $roomsQuery = Room::with(['roomType', 'activeHousekeepingAssignment.team', 'images'])->orderBy('floor')->orderBy('number');
 
         if ($status !== 'all') {
             $roomsQuery->where('status', $status);
@@ -64,12 +66,27 @@ class RoomController extends Controller
             'floor'        => ['nullable', 'string', 'max:10'],
             'view_type'    => ['nullable', 'string', 'max:50'],
             'notes'        => ['nullable', 'string'],
+            'images'       => ['nullable', 'array', 'max:4'],
+            'images.*'     => ['image', 'mimes:jpeg,jpg,png,webp', 'max:3072'],
         ]);
 
         $validated['tenant_id'] = Auth::user()->tenant_id
             ?? \App\Models\Tenant::where('slug', 'villa-boutanga')->value('id');
 
-        Room::create($validated);
+        unset($validated['images']);
+        $room = Room::create($validated);
+
+        // Upload images
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $index => $file) {
+                $path = $file->store("rooms/{$room->id}", 'public');
+                RoomImage::create([
+                    'room_id' => $room->id,
+                    'path' => $path,
+                    'sort_order' => $index,
+                ]);
+            }
+        }
 
         return redirect()->route('rooms.index', ['tab' => 'rooms'])
             ->with('success', 'Chambre créée avec succès.');
@@ -83,9 +100,28 @@ class RoomController extends Controller
             'floor'        => ['nullable', 'string', 'max:10'],
             'view_type'    => ['nullable', 'string', 'max:50'],
             'notes'        => ['nullable', 'string'],
+            'images'       => ['nullable', 'array', 'max:4'],
+            'images.*'     => ['image', 'mimes:jpeg,jpg,png,webp', 'max:3072'],
         ]);
 
+        unset($validated['images']);
         $room->update($validated);
+
+        // Upload nouvelles images (on vérifie qu'on ne dépasse pas 4 au total)
+        if ($request->hasFile('images')) {
+            $existingCount = $room->images()->count();
+            $newFiles = $request->file('images');
+            $slotsAvailable = 4 - $existingCount;
+
+            foreach (array_slice($newFiles, 0, $slotsAvailable) as $file) {
+                $path = $file->store("rooms/{$room->id}", 'public');
+                RoomImage::create([
+                    'room_id' => $room->id,
+                    'path' => $path,
+                    'sort_order' => $existingCount++,
+                ]);
+            }
+        }
 
         return redirect()->route('rooms.index', ['tab' => 'rooms'])
             ->with('success', 'Chambre mise à jour.');
@@ -98,10 +134,30 @@ class RoomController extends Controller
             return back()->withErrors(['delete' => 'Impossible de supprimer une chambre avec des réservations actives.']);
         }
 
+        // Supprimer les images du disque
+        foreach ($room->images as $image) {
+            Storage::disk('public')->delete($image->path);
+        }
+
         $room->delete();
 
         return redirect()->route('rooms.index', ['tab' => 'rooms'])
             ->with('success', 'Chambre supprimée.');
+    }
+
+    /**
+     * Supprimer une image individuelle d'une chambre (AJAX)
+     */
+    public function destroyImage(Room $room, RoomImage $image)
+    {
+        if ($image->room_id !== $room->id) {
+            abort(403);
+        }
+
+        Storage::disk('public')->delete($image->path);
+        $image->delete();
+
+        return back()->with('success', 'Image supprimée.');
     }
 
     public function updateStatus(Request $request, Room $room)
@@ -184,7 +240,7 @@ class RoomController extends Controller
 
     public function show(Room $room)
     {
-        $room->load(['roomType', 'statusHistory' => fn($q) => $q->orderBy('changed_at', 'desc')->limit(10)]);
+        $room->load(['roomType', 'images', 'statusHistory' => fn($q) => $q->orderBy('changed_at', 'desc')->limit(10)]);
         return view('rooms.show', compact('room'));
     }
 }

@@ -10,7 +10,19 @@
     </div>
 
     <div class="bg-white rounded-lg shadow-sm p-6">
-        <form action="{{ route('shop.products.update', $product) }}" method="POST" class="space-y-6">
+        @if ($errors->any())
+            <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800">
+                <i data-lucide="alert-circle" class="w-5 h-5 inline mr-2"></i>
+                <strong>Des erreurs sont survenues :</strong>
+                <ul class="mt-2 list-disc list-inside text-sm">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
+        <form action="{{ route('shop.products.update', $product) }}" method="POST" enctype="multipart/form-data" class="space-y-6">
             @csrf
             @method('PATCH')
 
@@ -58,6 +70,90 @@
                 <textarea name="description" rows="4"
                           class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent @error('description') border-red-500 @enderror">{{ $product->description }}</textarea>
                 @error('description')
+                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <!-- Image Upload -->
+            <div x-data="imageUploaderEdit('{{ $product->image_path ? asset('storage/' . $product->image_path) : '' }}')">
+                <label class="block text-sm font-medium text-primary mb-2">Image du produit</label>
+                <div class="relative">
+                    <!-- Zone de drop / sélection (visible quand pas d'image) -->
+                    <div x-show="!preview && !existingImage"
+                         @click="$refs.fileInput.click()"
+                         @dragover.prevent="isDragging = true"
+                         @dragleave.prevent="isDragging = false"
+                         @drop.prevent="handleDrop($event)"
+                         :class="isDragging ? 'border-primary bg-primary/5' : 'border-gray-300 bg-gray-50/50 hover:border-primary/50 hover:bg-primary/5'"
+                         class="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200">
+                        <div class="flex flex-col items-center gap-3">
+                            <div class="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+                                <i data-lucide="image-plus" class="w-7 h-7 text-primary/60"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-primary">
+                                    <span class="text-primary/80 underline decoration-primary/30 underline-offset-2">Cliquez pour choisir</span>
+                                    ou glissez-déposez
+                                </p>
+                                <p class="text-xs text-secondary mt-1">JPG, PNG ou WebP • Max 2 Mo</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Image existante -->
+                    <div x-show="existingImage && !preview" x-transition style="display: none;">
+                        <div class="relative rounded-xl overflow-hidden border border-gray-200 bg-gray-50 shadow-sm">
+                            <img :src="existingImage" alt="Image actuelle" class="w-full h-56 object-contain bg-white p-2">
+                        </div>
+                        <div class="flex items-center justify-between mt-3">
+                            <div class="flex items-center gap-2 text-sm text-secondary">
+                                <i data-lucide="file-image" class="w-4 h-4 text-primary/50"></i>
+                                <span>Image actuelle</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button type="button" @click="$refs.fileInput.click()"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors border border-primary/10">
+                                    <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+                                    Changer
+                                </button>
+                                <button type="button" @click="removeExistingImage()"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100">
+                                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                    Supprimer
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Preview de la nouvelle image -->
+                    <div x-show="preview" x-transition style="display: none;">
+                        <div class="relative rounded-xl overflow-hidden border border-gray-200 bg-gray-50 shadow-sm">
+                            <img :src="preview" alt="Aperçu" class="w-full h-56 object-contain bg-white p-2">
+                            <div class="absolute top-2 right-2">
+                                <span class="inline-flex items-center gap-1 px-2 py-1 bg-green-500 text-white text-[10px] font-bold rounded-md uppercase tracking-wider">
+                                    <i data-lucide="sparkles" class="w-3 h-3"></i> Nouvelle
+                                </span>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between mt-3">
+                            <div class="flex items-center gap-2 text-sm text-secondary">
+                                <i data-lucide="file-image" class="w-4 h-4 text-primary/50"></i>
+                                <span x-text="fileName" class="truncate max-w-[200px]"></span>
+                                <span class="text-xs text-secondary/60" x-text="fileSize"></span>
+                            </div>
+                            <button type="button" @click="cancelNewImage()"
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100">
+                                <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                                Annuler
+                            </button>
+                        </div>
+                    </div>
+
+                    <input type="file" name="image" x-ref="fileInput" @change="handleFileSelect($event)"
+                           accept="image/jpeg,image/png,image/webp" class="hidden">
+                    <input type="hidden" name="remove_image" :value="shouldRemove ? '1' : '0'">
+                </div>
+                @error('image')
                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                 @enderror
             </div>
@@ -113,4 +209,82 @@
         </form>
     </div>
 </div>
+
+@push('scripts')
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('imageUploaderEdit', (existingUrl) => ({
+        preview: null,
+        existingImage: existingUrl || null,
+        fileName: '',
+        fileSize: '',
+        isDragging: false,
+        shouldRemove: false,
+
+        handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) this.processFile(file);
+        },
+
+        handleDrop(event) {
+            this.isDragging = false;
+            const file = event.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                this.$refs.fileInput.files = dt.files;
+                this.processFile(file);
+            }
+        },
+
+        processFile(file) {
+            const maxSize = 2 * 1024 * 1024;
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+            if (!allowedTypes.includes(file.type)) {
+                alert('Format non supporté. Utilisez JPG, PNG ou WebP.');
+                return;
+            }
+            if (file.size > maxSize) {
+                alert('L\'image est trop volumineuse (max 2 Mo).');
+                return;
+            }
+
+            this.fileName = file.name;
+            this.fileSize = this.formatBytes(file.size);
+            this.shouldRemove = false;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                this.preview = e.target.result;
+                this.$nextTick(() => { if (window.refreshLucideIcons) window.refreshLucideIcons(); });
+            };
+            reader.readAsDataURL(file);
+        },
+
+        cancelNewImage() {
+            this.preview = null;
+            this.fileName = '';
+            this.fileSize = '';
+            this.$refs.fileInput.value = '';
+            this.$nextTick(() => { if (window.refreshLucideIcons) window.refreshLucideIcons(); });
+        },
+
+        removeExistingImage() {
+            this.existingImage = null;
+            this.shouldRemove = true;
+            this.$nextTick(() => { if (window.refreshLucideIcons) window.refreshLucideIcons(); });
+        },
+
+        formatBytes(bytes) {
+            if (bytes === 0) return '0 o';
+            const k = 1024;
+            const sizes = ['o', 'Ko', 'Mo'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+    }));
+});
+</script>
+@endpush
 @endsection

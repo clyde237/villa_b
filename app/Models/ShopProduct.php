@@ -19,6 +19,7 @@ class ShopProduct extends Model
         'shop_category_id',
         'name',
         'description',
+        'image_path',
         'sku',
         'price',
         'stock_quantity',

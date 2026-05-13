@@ -146,6 +146,7 @@
                                 </td>
                                 <td class="px-4 py-3 text-right">
                                     <div class="inline-flex items-center gap-2">
+                                        @role('restaurant_chief', 'restaurant_staff')
                                         <button type="button"
                                             onclick="openMovementModal({{ $item->id }}, 'in')"
                                             class="px-3 py-1.5 rounded-lg bg-green-600 text-white text-xs font-semibold hover:bg-green-700">
@@ -156,6 +157,7 @@
                                             class="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-surface-dark">
                                             Sortie
                                         </button>
+                                        @endrole
                                         @if($canManage)
                                             <button type="button"
                                                 onclick="openMovementModal({{ $item->id }}, 'adjust')"

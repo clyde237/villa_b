@@ -6,6 +6,7 @@ use App\Models\ShopCategory;
 use App\Models\ShopProduct;
 use App\Models\Tenant;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class ShopProductController extends Controller
@@ -33,7 +34,8 @@ class ShopProductController extends Controller
             $query->where('is_active', $status === 'active');
         }
 
-        $products = $query->orderBy('name')->paginate(20);
+        $view = $request->input('view', 'list');
+        $products = $query->orderBy('name')->paginate(20)->withQueryString();
         $categories = ShopCategory::where('tenant_id', $tenant->id)
             ->orderBy('sort_order')
             ->get();
@@ -41,6 +43,7 @@ class ShopProductController extends Controller
         return view('shop.products.index', [
             'products' => $products,
             'categories' => $categories,
+            'view' => $view,
         ]);
     }
 
@@ -72,6 +75,7 @@ class ShopProductController extends Controller
             'shop_category_id' => 'required|exists:shop_categories,id',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'image' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:2048',
             'sku' => 'required|string|unique:shop_products,sku',
             'price' => 'required|numeric|min:0',
             'stock_quantity' => 'required|integer|min:0',
@@ -87,6 +91,14 @@ class ShopProductController extends Controller
         $validated['price'] = (int)($validated['price'] * 100);
         $validated['tenant_id'] = $tenant->id;
         $validated['is_active'] = $request->has('is_active');
+
+        // Gérer l'upload de l'image
+        if ($request->hasFile('image')) {
+            $validated['image_path'] = $request->file('image')->store('shop/products', 'public');
+        }
+
+        // Retirer 'image' du tableau validé (ce n'est pas un champ du modèle)
+        unset($validated['image']);
 
         ShopProduct::create($validated);
 
@@ -119,6 +131,7 @@ class ShopProductController extends Controller
             'shop_category_id' => 'required|exists:shop_categories,id',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'image' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:2048',
             'sku' => 'required|string|unique:shop_products,sku,' . $product->id,
             'price' => 'required|numeric|min:0',
             'stock_quantity' => 'required|integer|min:0',
@@ -134,6 +147,24 @@ class ShopProductController extends Controller
         $validated['price'] = (int)($validated['price'] * 100);
         $validated['is_active'] = $request->has('is_active');
 
+        // Gérer l'upload de l'image
+        if ($request->hasFile('image')) {
+            // Supprimer l'ancienne image si elle existe
+            if ($product->image_path) {
+                Storage::disk('public')->delete($product->image_path);
+            }
+            $validated['image_path'] = $request->file('image')->store('shop/products', 'public');
+        }
+
+        // Supprimer l'image si demandé
+        if ($request->boolean('remove_image') && $product->image_path) {
+            Storage::disk('public')->delete($product->image_path);
+            $validated['image_path'] = null;
+        }
+
+        // Retirer 'image' et 'remove_image' du tableau validé
+        unset($validated['image']);
+
         $product->update($validated);
 
         return redirect()->route('shop.products.index')
@@ -142,6 +173,11 @@ class ShopProductController extends Controller
 
     public function destroy(ShopProduct $product)
     {
+        // Supprimer l'image si elle existe
+        if ($product->image_path) {
+            Storage::disk('public')->delete($product->image_path);
+        }
+
         $product->delete();
 
         return redirect()->route('shop.products.index')

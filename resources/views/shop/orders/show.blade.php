@@ -42,7 +42,7 @@
                             <p class="text-secondary text-sm">Réservation</p>
                             <p class="font-medium text-primary">
                                 <a href="{{ route('bookings.show', $order->booking) }}" class="hover:text-primary/70">
-                                    {{ $order->booking->customer->name }} - Chambre {{ $order->booking->rooms->first()?->number }}
+                                    {{ $order->booking->customer?->first_name }} {{ $order->booking->customer?->last_name }} - Chambre {{ $order->booking->room?->number ?? '—' }}
                                 </a>
                             </p>
                         </div>
@@ -201,7 +201,7 @@
             <p class="text-xs font-semibold uppercase tracking-widest text-primary/40 mb-2">Informations</p>
             @if ($order->booking)
                 <p class="text-xs text-primary/70">
-                    Hôte en séjour — Chambre {{ $order->booking->rooms->first()?->number }}
+                    Hôte en séjour — Chambre {{ $order->booking->room?->number ?? '—' }}
                 </p>
             @endif
             <p class="text-xs text-primary/70">
