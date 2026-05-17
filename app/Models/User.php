@@ -83,7 +83,7 @@ class User extends Authenticatable
     public function discussionConversations(): BelongsToMany
     {
         return $this->belongsToMany(DiscussionConversation::class, 'discussion_conversation_user')
-            ->withPivot('last_read_at', 'archived_at', 'deleted_at')
+            ->withPivot('last_read_at', 'archived_at', 'deleted_at', 'is_admin')
             ->withTimestamps();
     }
 
