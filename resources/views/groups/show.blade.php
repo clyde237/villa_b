@@ -157,7 +157,7 @@
                 <h2 class="font-heading font-semibold text-primary text-sm">Résumé financier</h2>
                 @if(in_array($groupBooking->status, ['confirmed', 'in_house']) && $totals['balance_due'] > 0)
                 <button onclick="document.getElementById('modal-group-payment').classList.remove('hidden')"
-                    class="flex items-center gap-1.5 text-xs text-secondary hover:text-primary transition-colors">
+                    class="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-surface-dark transition-colors shadow-sm">
                     <i data-lucide="credit-card" class="w-3.5 h-3.5"></i>
                     Encaisser
                 </button>
@@ -212,7 +212,7 @@
                 </h2>
                 @if(in_array($groupBooking->status, ['pending', 'confirmed']) && $roomTypes->isNotEmpty())
                 <button onclick="document.getElementById('modal-add-room').classList.remove('hidden')"
-                    class="flex items-center gap-1.5 text-xs text-secondary hover:text-primary transition-colors">
+                    class="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-surface-dark transition-colors shadow-sm">
                     <i data-lucide="plus" class="w-3.5 h-3.5"></i>
                     Ajouter une chambre
                 </button>
@@ -305,7 +305,7 @@
                 <h2 class="font-heading font-semibold text-primary text-sm">Prestations du groupe</h2>
                 @if($groupBooking->status === 'in_house')
                 <button onclick="document.getElementById('modal-group-folio').classList.remove('hidden')"
-                    class="flex items-center gap-1.5 text-xs text-secondary hover:text-primary transition-colors">
+                    class="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-surface-dark transition-colors shadow-sm">
                     <i data-lucide="plus" class="w-3.5 h-3.5"></i>
                     Ajouter
                 </button>
@@ -624,11 +624,12 @@
         <form method="POST" action="{{ route('groups.payment.add', $groupBooking) }}" class="px-6 py-5 space-y-4">
             @csrf
 
+            @php $consumedBalance = $groupBooking->getConsumedBalance(); @endphp
             {{-- Solde total --}}
             <div class="bg-accent/20 rounded-lg px-4 py-3 flex justify-between items-center">
-                <span class="text-xs text-primary/60">Solde total du groupe</span>
+                <span class="text-xs text-primary/60">Solde consommé (réel)</span>
                 <span class="text-lg font-heading font-semibold text-primary">
-                    {{ number_format($totals['balance_due'] / 100, 0, ',', ' ') }} FCFA
+                    {{ number_format($consumedBalance / 100, 0, ',', ' ') }} FCFA
                 </span>
             </div>
 
@@ -637,7 +638,7 @@
                     Montant (FCFA) *
                 </label>
                 <input type="number" name="amount"
-                    value="{{ (int) ceil($totals['balance_due'] / 100) }}"
+                    value="{{ (int) ceil($consumedBalance / 100) }}"
                     min="1" required
                     class="w-full px-3 py-2 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary">
             </div>

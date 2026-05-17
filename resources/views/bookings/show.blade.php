@@ -113,7 +113,7 @@
 @endif
 
     {{-- Minuteur Intelligent (Si Checked In) --}}
-    @if($booking->status->value === 'checked_in' && $booking->actual_check_in)
+    @if($booking->status->value === 'checked_in' && $booking->actual_check_in && !$booking->actual_check_out)
     <div class="mb-5 bg-gradient-to-r from-blue-900 to-blue-800 rounded-xl shadow-lg p-5 text-white flex items-center justify-between" 
          x-data="bookingTimer('{{ $booking->actual_check_in->toIso8601String() }}', '{{ $booking->check_out->copy()->setTime(12, 0, 0)->toIso8601String() }}')">
         <div class="flex items-center gap-4">
@@ -259,7 +259,7 @@
                 <h2 class="font-heading font-semibold text-primary text-sm">Folio du séjour</h2>
                 @if($booking->status->value === 'checked_in')
                 <button onclick="document.getElementById('modal-folio').classList.remove('hidden')"
-                    class="flex items-center gap-1.5 text-xs text-secondary hover:text-primary transition-colors">
+                    class="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-surface-dark transition-colors shadow-sm">
                     <i data-lucide="plus" class="w-3.5 h-3.5"></i>
                     Ajouter prestation
                 </button>
@@ -386,7 +386,7 @@
                 <h2 class="font-heading font-semibold text-primary text-sm">Paiements</h2>
                 @if(in_array($booking->status->value, ['confirmed', 'checked_in']) && $booking->balance_due > 0)
                 <button onclick="document.getElementById('modal-payment').classList.remove('hidden')"
-                    class="flex items-center gap-1.5 text-xs text-secondary hover:text-primary transition-colors">
+                    class="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-surface-dark transition-colors shadow-sm">
                     <i data-lucide="plus" class="w-3.5 h-3.5"></i>
                     Encaisser
                 </button>
@@ -499,11 +499,12 @@
         <form method="POST" action="{{ route('bookings.payment.add', $booking) }}" class="px-6 py-5 space-y-4">
             @csrf
 
+            @php $consumedBalance = $booking->getConsumedBalance(); @endphp
             {{-- Solde affiché --}}
             <div class="bg-accent/30 rounded-lg px-4 py-3 flex justify-between items-center">
-                <span class="text-xs text-primary/60">Solde dû</span>
+                <span class="text-xs text-primary/60">Solde consommé (réel)</span>
                 <span class="text-lg font-heading font-semibold text-primary">
-                    {{ number_format($booking->balance_due / 100, 0, ',', ' ') }} FCFA
+                    {{ number_format($consumedBalance / 100, 0, ',', ' ') }} FCFA
                 </span>
             </div>
 
@@ -513,7 +514,7 @@
                 </label>
                 <input type="number"
                     name="amount"
-                    value="{{ (int) ceil($booking->balance_due / 100) }}"
+                    value="{{ (int) ceil($consumedBalance / 100) }}"
                     min="1"
                     required
                     class="w-full px-3 py-2 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary">

@@ -458,10 +458,13 @@ class GroupBookingController extends Controller
 
         $tenantId = Auth::user()->tenant_id
             ?? Tenant::where('slug', 'villa-boutanga')->value('id');
-        $totalCentimes = $validated['amount'] * 100;
-        $totalBalanceDue = $bookings->sum('balance_due');
+        $totalTargetBalance = 0;
+        foreach ($bookings as $booking) {
+            $booking->target_balance = max($booking->balance_due, $booking->getConsumedBalance());
+            $totalTargetBalance += $booking->target_balance;
+        }
 
-        if ($totalCentimes > $totalBalanceDue + 100) {
+        if ($totalCentimes > $totalTargetBalance + 100) {
             return back()->withErrors(['payment' => 'Le montant dépasse le solde total dû du groupe.']);
         }
 
@@ -469,7 +472,7 @@ class GroupBookingController extends Controller
             $bookings,
             $validated,
             $totalCentimes,
-            $totalBalanceDue,
+            $totalTargetBalance,
             $tenantId,
             $groupBooking
         ) {
@@ -483,7 +486,7 @@ class GroupBookingController extends Controller
                 // Calcul de la part de ce booking
                 $share = match ($validated['distribution']) {
                     // Proportionnel : chaque chambre paie selon son solde relatif
-                    'proportional' => (int) round($totalCentimes * ($booking->balance_due / $totalBalanceDue)),
+                    'proportional' => (int) round($totalCentimes * ($booking->target_balance / $totalTargetBalance)),
 
                     // Égal : montant divisé équitablement
                     'equal' => (int) round($totalCentimes / $bookings->count()),
@@ -494,7 +497,7 @@ class GroupBookingController extends Controller
                     $share = $remaining;
                 }
 
-                $share = min($share, $booking->balance_due, $remaining);
+                $share = min($share, $booking->target_balance, $remaining);
                 if ($share <= 0) {
                     continue;
                 }
@@ -530,6 +533,19 @@ class GroupBookingController extends Controller
                 ]);
 
                 $remaining -= $share;
+            }
+
+            // Après avoir réparti le paiement, on vérifie si certaines chambres ont réglé leur solde consommé
+            foreach ($bookings as $booking) {
+                if ($booking->getConsumedBalance() <= 0 && $booking->status === BookingStatus::CHECKED_IN) {
+                    // Le client a réglé l'intégralité du temps consommé -> on arrête le minuteur
+                    if (!$booking->actual_check_out) {
+                        $booking->update(['actual_check_out' => now()]);
+                    }
+                    
+                    // Actualise le folio et les coûts pour correspondre exactement à la durée réelle passée
+                    $this->checkOutService->syncDurationToNow($booking);
+                }
             }
         });
 
