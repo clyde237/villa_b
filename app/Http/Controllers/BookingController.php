@@ -110,7 +110,8 @@ class BookingController extends Controller
                 'last_name'          => ['required', 'string', 'max:100'],
                 'email'              => ['nullable', 'email'],
                 'phone'              => ['nullable', 'string', 'max:30'],
-                'nationality'        => ['nullable', 'string', 'max:5'],
+                'nationality'        => ['nullable', 'string', 'max:100'],
+                'country'            => ['nullable', 'string', 'max:5'],
                 'id_document_type'   => ['nullable', 'string'],
                 'id_document_number' => ['nullable', 'string', 'max:50'],
             ]);
@@ -137,6 +138,7 @@ class BookingController extends Controller
             'check_in'    => ['required', 'date', 'after_or_equal:today'],
             'check_out'   => ['required', 'date', 'after:check_in'],
             'adults'      => ['required', 'integer', 'min:1'],
+            'source'      => ['nullable', 'string'],
         ]);
 
         $customer    = Customer::findOrFail($request->customer_id);
@@ -144,6 +146,7 @@ class BookingController extends Controller
         $checkOut    = $request->check_out;
         $adults      = $request->adults;
         $children    = $request->children ?? 0;
+        $source      = $request->source ?? 'direct';
         $totalPeople = $adults + $children;
 
         // Chambres disponibles pour cette période avec capacité suffisante
@@ -161,6 +164,7 @@ class BookingController extends Controller
             'checkOut',
             'adults',
             'children',
+            'source',
             'availableRooms',
             'roomTypes'
         ));

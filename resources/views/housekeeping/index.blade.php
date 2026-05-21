@@ -1,4 +1,4 @@
-﻿@extends('layouts.hotel')
+@extends('layouts.hotel')
 
 @section('title', 'Housekeeping')
 
@@ -47,161 +47,234 @@
     <x-stat-card label="Terminees" :value="$stats['completed_today']" subtitle="aujourd'hui" color="emerald" />
 </div>
 
-<div class="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
-    <div class="px-5 py-4 border-b border-secondary/20 flex items-center justify-between">
-        <div>
-            <h2 class="font-heading font-semibold text-primary text-sm">Liste prioritaire des chambres sales</h2>
-            <p class="text-xs text-primary/40 mt-1">Tri automatique selon urgence operationnelle.</p>
+<div class="mb-6">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="font-heading font-semibold text-primary text-xl">Centre d'actions rapides (Tableau de bord visuel)</h2>
+        <div class="flex items-center gap-3 text-xs">
+            <span class="flex items-center gap-1.5 text-primary/60"><div class="w-3 h-3 rounded-full bg-red-100 border border-red-300"></div> Sale</span>
+            <span class="flex items-center gap-1.5 text-primary/60"><div class="w-3 h-3 rounded-full bg-yellow-100 border border-yellow-300"></div> En nettoyage</span>
+            <span class="flex items-center gap-1.5 text-primary/60"><div class="w-3 h-3 rounded-full bg-purple-100 border border-purple-300"></div> À inspecter</span>
+            <span class="flex items-center gap-1.5 text-primary/60"><div class="w-3 h-3 rounded-full bg-emerald-100 border border-emerald-300"></div> Contrôlée</span>
         </div>
-        <span class="text-xs text-primary/40">{{ $priorityRooms->count() }} chambre{{ $priorityRooms->count() > 1 ? 's' : '' }}</span>
     </div>
 
-    @if($priorityRooms->isEmpty())
-        <div class="px-5 py-10 text-sm text-primary/40 text-center">Aucune chambre sale a prioriser.</div>
-    @else
-        <div class="divide-y divide-secondary/10">
-            @foreach($priorityRooms as $item)
-                @php $room = $item['room']; @endphp
-                <div class="px-5 py-3.5 flex items-center justify-between gap-4">
-                    <div class="min-w-0">
-                        <p class="text-sm font-medium text-primary">Chambre {{ $room->number }} - {{ $room->roomType->name }}</p>
-                        <p class="text-xs text-primary/45">{{ $item['priority_reason'] }}</p>
-                        @if($item['next_check_in'])
-                            <p class="text-[11px] text-primary/50 mt-0.5">Arrivee prevue: {{ $item['next_check_in']->locale('fr')->isoFormat('ddd D MMM') }}</p>
-                        @endif
-                    </div>
+    @php
+        // On regroupe toutes les chambres d'intérêt (Sale, Nettoyage, Propre, Inspectée) depuis la pipeline déjà chargée
+        $allActiveRooms = $housekeepingPipeline->flatten(1);
+    @endphp
 
-                    <div class="flex items-center gap-2 flex-shrink-0">
-                        <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold border {{ $priorityBadge[$item['priority_label']] ?? $priorityBadge['Normale'] }}">
-                            {{ $item['priority_label'] }}
-                        </span>
-                        <span class="px-2 py-1 rounded-lg bg-accent/20 text-[11px] text-primary/60">Score {{ $item['priority_score'] }}</span>
+    @if($allActiveRooms->isEmpty())
+        <div class="bg-white rounded-xl shadow-sm p-10 text-center text-primary/40 border border-dashed border-secondary/30">
+            Aucune chambre ne requiert votre attention pour le moment.
+        </div>
+    @else
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            @foreach($allActiveRooms as $room)
+                @if($room->status->value === 'dirty')
+                    {{-- CARTE ROUGE : SALE --}}
+                    <div class="rounded-xl border border-red-200 bg-red-50 p-4 shadow-sm flex flex-col relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 w-16 h-16 bg-red-100 rounded-bl-full -z-0"></div>
+                        
+                        <div class="flex items-start justify-between relative z-10 mb-3">
+                            <div>
+                                <h3 class="font-heading font-bold text-red-900 text-lg">Chambre {{ $room->number }}</h3>
+                                <p class="text-xs text-red-700 font-medium">{{ $room->roomType->name }}</p>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-200 text-red-800 uppercase tracking-widest">Sale</span>
+                        </div>
+
+                        @php
+                            // Trouver la priorité si elle existe dans $priorityRooms
+                            $prioInfo = $priorityRooms->firstWhere('room.id', $room->id);
+                        @endphp
+                        
+                        @if($prioInfo)
+                        <div class="mb-4 text-xs text-red-800/80 bg-red-100/50 p-2 rounded-lg">
+                            <span class="font-semibold">{{ $prioInfo['priority_label'] }} :</span> {{ $prioInfo['priority_reason'] }}
+                        </div>
+                        @endif
+
+                        <div class="mt-auto relative z-10">
+                            @if($room->activeHousekeepingAssignment)
+                                <div class="px-3 py-2 bg-white/60 rounded-lg border border-red-200 text-xs text-red-800">
+                                    Déjà assignée à : <span class="font-bold">{{ $room->activeHousekeepingAssignment->team->name }}</span>
+                                </div>
+                            @elseif($teams->isEmpty())
+                                <p class="text-xs text-red-600/70 italic">Créez une équipe pour l'assigner.</p>
+                            @else
+                                {{-- ACTION RAPIDE : ASSIGNER --}}
+                                <form method="POST" action="{{ route('housekeeping.assignments.store') }}" class="flex gap-2">
+                                    @csrf
+                                    <input type="hidden" name="room_ids[]" value="{{ $room->id }}">
+                                    <select name="housekeeping_team_id" required class="flex-1 px-2 py-2 text-xs border border-red-200 rounded-lg bg-white text-red-900 focus:outline-none focus:border-red-400">
+                                        <option value="">Sélectionner équipe...</option>
+                                        @foreach($teams as $team)
+                                            <option value="{{ $team->id }}">{{ $team->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <button type="submit" class="px-3 py-2 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 transition">
+                                        Go
+                                    </button>
+                                </form>
+                            @endif
+                        </div>
                     </div>
-                </div>
+                @elseif($room->status->value === 'cleaning')
+                    {{-- CARTE JAUNE : EN NETTOYAGE --}}
+                    <div class="rounded-xl border border-yellow-300 bg-yellow-50 p-4 shadow-sm flex flex-col relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 w-16 h-16 bg-yellow-200/50 rounded-bl-full -z-0"></div>
+                        
+                        <div class="flex items-start justify-between relative z-10 mb-3">
+                            <div>
+                                <h3 class="font-heading font-bold text-yellow-900 text-lg">Chambre {{ $room->number }}</h3>
+                                <p class="text-xs text-yellow-800 font-medium">{{ $room->roomType->name }}</p>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-yellow-200 text-yellow-900 uppercase tracking-widest flex items-center gap-1">
+                                <i data-lucide="loader-2" class="w-3 h-3 animate-spin"></i> En cours
+                            </span>
+                        </div>
+
+                        @if($room->activeHousekeepingAssignment)
+                        <div class="mb-4 text-xs text-yellow-900/80">
+                            En charge : <span class="font-semibold px-2 py-0.5 bg-yellow-200/50 rounded-md">{{ $room->activeHousekeepingAssignment->team->name }}</span>
+                        </div>
+                        @endif
+
+                        <div class="mt-auto relative z-10">
+                            {{-- ACTION RAPIDE : SIGNALER UN PROBLEME --}}
+                            <form method="POST" action="{{ route('housekeeping.issue', $room) }}" class="flex gap-2">
+                                @csrf
+                                <input type="text" name="issue_notes" required placeholder="Ex: Fuite d'eau..." class="flex-1 px-2 py-2 text-xs border border-yellow-300 rounded-lg bg-white text-yellow-900 focus:outline-none">
+                                <button type="submit" class="px-3 py-2 bg-yellow-600 text-white rounded-lg text-xs font-semibold hover:bg-yellow-700 transition" title="Signaler un problème">
+                                    <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                @elseif($room->status->value === 'clean')
+                    {{-- CARTE VIOLETTE : À INSPECTER (PROPRE) --}}
+                    <div class="rounded-xl border border-purple-200 bg-purple-50 p-4 shadow-sm flex flex-col relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 w-16 h-16 bg-purple-100 rounded-bl-full -z-0"></div>
+                        
+                        <div class="flex items-start justify-between relative z-10 mb-3">
+                            <div>
+                                <h3 class="font-heading font-bold text-purple-900 text-lg">Chambre {{ $room->number }}</h3>
+                                <p class="text-xs text-purple-700 font-medium">{{ $room->roomType->name }}</p>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-200 text-purple-800 uppercase tracking-widest">À Inspecter</span>
+                        </div>
+
+                        <div class="mb-4 text-xs text-purple-800/80">
+                            Nettoyage terminé. En attente de validation par le chef d'équipe.
+                        </div>
+
+                        <div class="mt-auto relative z-10 flex gap-2">
+                            {{-- ACTION RAPIDE : INSPECTER --}}
+                            <form method="POST" action="{{ route('rooms.updateStatus', $room) }}" class="flex-1">
+                                @csrf
+                                <input type="hidden" name="status" value="inspected">
+                                <button type="submit" class="w-full py-2 bg-purple-600 text-white rounded-lg text-xs font-semibold hover:bg-purple-700 transition flex items-center justify-center gap-1.5">
+                                    <i data-lucide="check-circle" class="w-4 h-4"></i> Valider (Conforme)
+                                </button>
+                            </form>
+                            
+                            {{-- ACTION RAPIDE : REFUSER (REMETTRE EN SALE) --}}
+                            <form method="POST" action="{{ route('rooms.updateStatus', $room) }}" class="w-10">
+                                @csrf
+                                <input type="hidden" name="status" value="dirty">
+                                <input type="hidden" name="reason" value="Inspection échouée">
+                                <button type="submit" class="w-full h-full bg-white border border-purple-200 text-red-600 rounded-lg text-xs hover:bg-red-50 hover:border-red-200 transition flex items-center justify-center" title="Refuser le nettoyage">
+                                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                @elseif($room->status->value === 'inspected')
+                    {{-- CARTE VERTE : CONTRÔLÉE (ATTENTE RÉCEPTION) --}}
+                    <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm flex flex-col relative overflow-hidden group opacity-80 hover:opacity-100 transition-opacity">
+                        <div class="absolute top-0 right-0 w-16 h-16 bg-emerald-100 rounded-bl-full -z-0"></div>
+                        
+                        <div class="flex items-start justify-between relative z-10 mb-3">
+                            <div>
+                                <h3 class="font-heading font-bold text-emerald-900 text-lg">Chambre {{ $room->number }}</h3>
+                                <p class="text-xs text-emerald-700 font-medium">{{ $room->roomType->name }}</p>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-200 text-emerald-800 uppercase tracking-widest">Contrôlée</span>
+                        </div>
+
+                        <div class="mt-auto relative z-10 text-xs text-emerald-800/80 bg-emerald-100/50 p-2 rounded-lg flex items-center gap-2">
+                            <i data-lucide="info" class="w-4 h-4"></i> La réception doit la libérer pour location.
+                        </div>
+                    </div>
+                @endif
             @endforeach
         </div>
     @endif
 </div>
 
-<div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
-    <div class="bg-white rounded-xl shadow-sm overflow-hidden xl:col-span-2">
-        <div class="px-5 py-4 border-b border-secondary/20 flex items-center justify-between">
-            <h2 class="font-heading font-semibold text-primary text-sm">Mes chambres assignees</h2>
-            <span class="text-xs text-primary/40">{{ $myAssignments->count() }} tache{{ $myAssignments->count() > 1 ? 's' : '' }}</span>
+<div class="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
+    <div class="px-5 py-4 border-b border-secondary/20 flex items-center justify-between">
+        <h2 class="font-heading font-semibold text-primary text-sm">Affectation multiple (Batch)</h2>
+        <span class="text-xs text-primary/40">{{ $dirtyRooms->count() }} chambre(s) sale(s)</span>
+    </div>
+    <div class="p-5">
+        @role('housekeeping_leader', 'manager')
+        @if($dirtyRooms->isEmpty())
+        <div class="rounded-xl border border-dashed border-secondary/30 px-4 py-8 text-sm text-primary/40 text-center">
+            Aucune chambre sale à affecter en lot.
         </div>
-
-        @if($myAssignments->isEmpty())
-        <div class="px-5 py-10 text-sm text-primary/40 text-center">
-            Aucune chambre ne t'est affectee pour le moment.
+        @elseif($teams->isEmpty())
+        <div class="rounded-xl border border-dashed border-secondary/30 px-4 py-8 text-sm text-primary/40 text-center">
+            Crée d'abord une équipe de nettoyage en bas de page.
         </div>
         @else
-        <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-            @foreach($myAssignments as $assignment)
-            <div class="rounded-2xl border border-secondary/20 bg-accent/10 p-4">
-                <div class="flex items-start justify-between gap-3 mb-3">
-                    <div>
-                        <p class="font-heading font-semibold text-primary text-lg">Chambre {{ $assignment->room->number }}</p>
-                        <p class="text-xs text-primary/45">{{ $assignment->room->roomType->name }} - Equipe {{ $assignment->team->name }}</p>
-                    </div>
-                    <span class="px-2.5 py-1 rounded-full text-[11px] font-medium
-                        {{ $assignment->status === 'pending' ? 'bg-orange-50 text-orange-700' : '' }}
-                        {{ $assignment->status === 'in_progress' ? 'bg-blue-50 text-blue-700' : '' }}
-                        {{ $assignment->status === 'blocked' ? 'bg-red-50 text-red-700' : '' }}">
-                        {{ $assignment->status === 'pending' ? 'A faire' : ($assignment->status === 'in_progress' ? 'En cours' : 'Probleme') }}
-                    </span>
+        <form method="POST" action="{{ route('housekeeping.assignments.store') }}" class="space-y-4 max-w-3xl mx-auto">
+            @csrf
+            <div class="flex gap-4 items-end">
+                <div class="flex-1">
+                    <label class="block text-xs text-primary/50 mb-1.5">Sélectionnez une équipe</label>
+                    <select name="housekeeping_team_id" required class="w-full px-3 py-2.5 text-sm border border-secondary/30 rounded-xl bg-white text-primary focus:outline-none focus:border-secondary">
+                        <option value="">Choisir...</option>
+                        @foreach($teams as $team)
+                        <option value="{{ $team->id }}">{{ $team->name }}{{ $team->leader ? ' - ' . $team->leader->name : '' }}</option>
+                        @endforeach
+                    </select>
                 </div>
-
-                <div class="space-y-2 mb-4">
-                    <p class="text-xs text-primary/60">
-                        Statut chambre :
-                        <span class="font-medium text-primary">{{ $assignment->room->status->label() }}</span>
-                    </p>
-                    @if($assignment->notes)
-                    <p class="text-xs text-primary/50 italic">{{ $assignment->notes }}</p>
-                    @endif
-                    @if($assignment->issue_notes)
-                    <div class="rounded-lg bg-red-50 border border-red-100 px-3 py-2 text-xs text-red-700">
-                        {{ $assignment->issue_notes }}
-                    </div>
-                    @endif
-                </div>
-
-                <div class="space-y-2">
-                    @if($assignment->status === 'pending')
-                    <form method="POST" action="{{ route('housekeeping.clean', $assignment->room) }}">
-                        @csrf
-                        <button type="submit" class="w-full py-3 rounded-xl text-sm font-semibold bg-yellow-500 text-white hover:bg-yellow-600 transition-colors">
-                            Demarrer le nettoyage
-                        </button>
-                    </form>
-                    @endif
-
-                    @if(in_array($assignment->status, ['pending', 'in_progress']))
-                    <form method="POST" action="{{ route('housekeeping.ready', $assignment->room) }}">
-                        @csrf
-                        <button type="submit" class="w-full py-3 rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">
-                            Valider le nettoyage
-                        </button>
-                    </form>
-
-                    <form method="POST" action="{{ route('housekeeping.issue', $assignment->room) }}" class="space-y-2">
-                        @csrf
-                        <textarea
-                            name="issue_notes"
-                            rows="3"
-                            required
-                            class="w-full px-3 py-2 text-sm border border-secondary/30 rounded-xl bg-white text-primary focus:outline-none focus:border-secondary resize-none"
-                            placeholder="Ex: fuite d'eau, draps manquants, odeur persistante..."></textarea>
-                        <label class="flex items-center gap-2 text-xs text-primary/60">
-                            <input type="checkbox" name="mark_as_maintenance" value="1" class="rounded border-secondary/40 text-primary focus:ring-primary">
-                            Basculer la chambre en maintenance
-                        </label>
-                        <button type="submit" class="w-full py-3 rounded-xl text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors">
-                            Signaler un probleme
-                        </button>
-                    </form>
-                    @endif
+                <div class="flex-2">
+                    <button type="submit" class="px-6 py-2.5 rounded-xl text-sm font-semibold bg-primary text-white hover:bg-surface-dark transition-colors h-[42px]">
+                        Affecter les chambres cochées
+                    </button>
                 </div>
             </div>
-            @endforeach
-        </div>
-        @endif
-    </div>
 
-    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div class="px-5 py-4 border-b border-secondary/20">
-            <h2 class="font-heading font-semibold text-primary text-sm">Pipeline housekeeping</h2>
-            <p class="text-xs text-primary/40 mt-1">Seuls les statuts menage sont affiches ici.</p>
-        </div>
-
-        <div class="p-4 space-y-4">
-            @foreach($pipelineLabels as $status => $label)
-            <div class="rounded-xl border border-secondary/20 p-3">
+            <div class="mt-4">
                 <div class="flex items-center justify-between mb-2">
-                    <p class="text-sm font-semibold text-primary">{{ $label }}</p>
-                    <span class="text-xs text-primary/40">{{ $housekeepingPipeline->get($status, collect())->count() }}</span>
+                    <label class="block text-xs font-semibold text-primary">Cochez les chambres à assigner :</label>
+                    <button type="button" onclick="toggleDirtyRooms(true)" class="text-xs text-secondary hover:text-primary transition-colors">Tout cocher</button>
                 </div>
-
-                @if($housekeepingPipeline->get($status, collect())->isEmpty())
-                <p class="text-xs text-primary/35">Aucune chambre.</p>
-                @else
-                <div class="space-y-2">
-                    @foreach($housekeepingPipeline->get($status, collect()) as $room)
-                    <div class="flex items-center justify-between gap-3 text-xs">
-                        <div>
-                            <p class="font-medium text-primary">Chambre {{ $room->number }}</p>
-                            <p class="text-primary/40">{{ $room->roomType->name }}</p>
-                        </div>
+                <div class="flex flex-wrap gap-2">
+                    @foreach($dirtyRooms as $room)
+                    <label class="flex items-center gap-2 px-3 py-2 rounded-lg border {{ $room->activeHousekeepingAssignment ? 'border-orange-200 bg-orange-50' : 'border-secondary/20 bg-white hover:bg-accent/5' }} cursor-pointer transition-colors">
+                        <input type="checkbox" name="room_ids[]" value="{{ $room->id }}" class="dirty-room-checkbox rounded border-secondary/40 text-primary focus:ring-primary">
+                        <span class="text-sm font-medium text-primary">{{ $room->number }}</span>
                         @if($room->activeHousekeepingAssignment)
-                        <span class="px-2 py-1 rounded-full bg-secondary/10 text-primary/70">{{ $room->activeHousekeepingAssignment->team->name }}</span>
+                            <span class="text-[10px] text-orange-600 uppercase">Déjà assignée</span>
                         @endif
-                    </div>
+                    </label>
                     @endforeach
                 </div>
-                @endif
             </div>
-            @endforeach
+            
+            <div>
+                <textarea name="notes" rows="2" class="w-full px-3 py-2 text-xs border border-secondary/30 rounded-xl bg-white text-primary focus:outline-none focus:border-secondary resize-none" placeholder="Consignes (optionnel)..."></textarea>
+            </div>
+        </form>
+        @endif
+        @else
+        <div class="rounded-xl border border-dashed border-secondary/30 px-4 py-8 text-sm text-primary/40 text-center">
+            L'affectation des chambres est réservée au chef de service housekeeping.
         </div>
+        @endrole
     </div>
 </div>
 
@@ -407,6 +480,17 @@ function toggleDirtyRooms(checked) {
         checkbox.checked = checked;
     });
 }
+
+// Actualisation automatique du dashboard toutes les 15 secondes
+// S'arrête si l'utilisateur interagit avec un formulaire (focus ou case cochée)
+setInterval(() => {
+    const isTyping = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
+    const hasCheckedBoxes = document.querySelectorAll('input[type="checkbox"]:checked').length > 0;
+    
+    if (!isTyping && !hasCheckedBoxes) {
+        window.location.reload();
+    }
+}, 15000);
 </script>
 
 @endsection
