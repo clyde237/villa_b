@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'mistral' => [
+        'key' => env('MISTRAL_API_KEY'),
+        'model' => env('MISTRAL_MODEL', 'mistral-small-latest'),
+    ],
+
 ];

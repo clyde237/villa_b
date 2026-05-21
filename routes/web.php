@@ -49,6 +49,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->name('dashboard');
 
+    // --- ASSISTANT IA (Kuété) ---
+    Route::post('/ai-chat', [App\Http\Controllers\AiAssistantController::class, 'chat'])->name('ai.chat');
+
     // --- DISCUSSION INTERNE ---
     Route::prefix('discussions')->name('discussions.')->group(function () {
         Route::get('/', [DiscussionController::class, 'index'])->name('index');
