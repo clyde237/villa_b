@@ -485,21 +485,35 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4 mb-2">
+                    <div class="grid grid-cols-2 gap-4 mb-4">
                         <div>
                             <label class="block text-xs font-semibold uppercase tracking-widest text-primary/50 mb-1.5">Nationalité</label>
-                            <input type="text" name="nationality" placeholder="CM" maxlength="5" x-bind:disabled="!isCreatingNew"
+                            <input type="text" name="nationality" placeholder="Ex: Camerounaise" maxlength="100" x-bind:disabled="!isCreatingNew"
                                    class="w-full px-3 py-2 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary">
                         </div>
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-widest text-primary/50 mb-1.5">Code pays</label>
+                            <input type="text" name="country" placeholder="Ex: CM" maxlength="5" x-bind:disabled="!isCreatingNew"
+                                   class="w-full px-3 py-2 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mb-2">
                         <div>
                             <label class="block text-xs font-semibold uppercase tracking-widest text-primary/50 mb-1.5">Type document</label>
                             <select name="id_document_type" x-bind:disabled="!isCreatingNew"
                                     class="w-full px-3 py-2 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary">
                                 <option value="">Sélectionner...</option>
-                                <option value="passport">Passeport</option>
-                                <option value="id_card">Carte d'identité</option>
-                                <option value="driver_license">Permis de conduire</option>
+                                <option value="CNI">CNI</option>
+                                <option value="Passeport">Passeport</option>
+                                <option value="Permis de conduire">Permis de conduire</option>
+                                <option value="Carte de résident">Carte de résident</option>
                             </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-widest text-primary/50 mb-1.5">Numéro du document</label>
+                            <input type="text" name="id_document_number" placeholder="Ex: 20261430524..." maxlength="50" x-bind:disabled="!isCreatingNew"
+                                   class="w-full px-3 py-2 text-sm border border-secondary/30 rounded-lg text-primary outline-none focus:border-secondary">
                         </div>
                     </div>
                 </x-customer-search>

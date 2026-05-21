@@ -49,6 +49,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->name('dashboard');
 
+    // --- ASSISTANT IA (Kuété) ---
+    Route::post('/ai-chat', [App\Http\Controllers\AiAssistantController::class, 'chat'])->name('ai.chat');
+
     // --- DISCUSSION INTERNE ---
     Route::prefix('discussions')->name('discussions.')->group(function () {
         Route::get('/', [DiscussionController::class, 'index'])->name('index');
@@ -70,17 +73,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // --- CHAMBRES ---
     Route::prefix('rooms')->name('rooms.')->middleware('role:manager,reception,housekeeping_leader,housekeeping')->group(function () {
         Route::get('/',                [RoomController::class, 'index'])->name('index');
-        Route::post('/',               [RoomController::class, 'store'])->middleware('role:manager')->name('store');
+        Route::post('/',               [RoomController::class, 'store'])->middleware('role:manager,reception')->name('store');
         Route::get('/{room}',          [RoomController::class, 'show'])->name('show');
-        Route::put('/{room}',          [RoomController::class, 'update'])->middleware('role:manager')->name('update');
-        Route::delete('/{room}',       [RoomController::class, 'destroy'])->middleware('role:manager')->name('destroy');
+        Route::put('/{room}',          [RoomController::class, 'update'])->middleware('role:manager,reception')->name('update');
+        Route::delete('/{room}',       [RoomController::class, 'destroy'])->middleware('role:manager,reception')->name('destroy');
         Route::post('/{room}/status',  [RoomController::class, 'updateStatus'])->middleware('role:manager,reception,housekeeping_leader,housekeeping_staff,housekeeping')->name('updateStatus');
-        Route::delete('/{room}/images/{image}', [RoomController::class, 'destroyImage'])->middleware('role:manager')->name('images.destroy');
+        Route::delete('/{room}/images/{image}', [RoomController::class, 'destroyImage'])->middleware('role:manager,reception')->name('images.destroy');
 
         // Types de chambres - seulement manager
-        Route::post('/types/store',         [RoomController::class, 'storeType'])->middleware('role:manager')->name('types.store');
-        Route::put('/types/{roomType}',     [RoomController::class, 'updateType'])->middleware('role:manager')->name('types.update');
-        Route::delete('/types/{roomType}',  [RoomController::class, 'destroyType'])->middleware('role:manager')->name('types.destroy');
+        Route::post('/types/store',         [RoomController::class, 'storeType'])->middleware('role:manager,reception')->name('types.store');
+        Route::put('/types/{roomType}',     [RoomController::class, 'updateType'])->middleware('role:manager,reception')->name('types.update');
+        Route::delete('/types/{roomType}',  [RoomController::class, 'destroyType'])->middleware('role:manager,reception')->name('types.destroy');
     });
 
     // --- RÉSERVATIONS ---
