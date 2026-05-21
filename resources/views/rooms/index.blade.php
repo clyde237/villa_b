@@ -14,7 +14,7 @@
         </p>
     </div>
     @if($tab === 'rooms')
-    @role('manager')
+    @role('manager', 'reception')
     <button onclick="document.getElementById('modal-create-room').classList.remove('hidden')"
         class="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-surface-dark transition-colors">
         <i data-lucide="plus" class="w-4 h-4"></i>
@@ -22,7 +22,7 @@
     </button>
     @endrole
     @else
-    @role('manager')
+    @role('manager', 'reception')
     <button onclick="document.getElementById('modal-create-type').classList.remove('hidden')"
         class="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-surface-dark transition-colors">
         <i data-lucide="plus" class="w-4 h-4"></i>
@@ -204,7 +204,7 @@
                 title="Voir détail">
                 <i data-lucide="settings" class="w-4 h-4"></i>
             </a>
-            @role('manager')
+            @role('manager', 'reception')
             <button
                 data-id="{{ $room->id }}"
                 data-number="{{ $room->number }}"

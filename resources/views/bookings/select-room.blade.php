@@ -124,6 +124,7 @@
                                 <input type="hidden" name="check_out" value="{{ $checkOut }}">
                                 <input type="hidden" name="adults_count" value="{{ $adults }}">
                                 <input type="hidden" name="children_count" value="{{ $children }}">
+                                <input type="hidden" name="source" value="{{ $source }}">
                                 <button type="submit"
                                         class="w-full p-3 border border-secondary/20 rounded-lg hover:border-primary hover:bg-accent/10 transition-all text-left group">
                                     <div class="flex items-center justify-between mb-1">
