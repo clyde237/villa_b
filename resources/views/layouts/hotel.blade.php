@@ -642,6 +642,17 @@
                         En ligne
                     </span>
                 @endif
+
+                @role('manager', 'reception')
+                    <a href="{{ route('reception.pos.index') }}"
+                       title="Basculer vers le terminal plein écran Mode POS Réception"
+                       class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-primary hover:bg-surface-dark transition-all shadow-xs mr-1">
+                        <i data-lucide="store" class="w-3.5 h-3.5 text-accent"></i>
+                        <span class="hidden md:inline">Mode POS Réception</span>
+                        <span class="md:hidden">POS</span>
+                    </a>
+                @endrole
+
                 <span class="text-xs text-primary/50">
                     {{ ucfirst(\Carbon\Carbon::now()->locale('fr')->isoFormat('ddd. D MMM')) }}
                 </span>

@@ -1,4 +1,4 @@
-@extends('layouts.hotel')
+@extends('layouts.pos')
 
 @section('title', 'Historique des Ventes POS Réception')
 

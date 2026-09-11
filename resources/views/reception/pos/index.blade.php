@@ -1,25 +1,25 @@
-@extends('layouts.hotel')
+@extends('layouts.pos')
 
 @section('title', 'Mode POS Réception')
 
 @section('content')
-<div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-4" x-data="receptionPosApp(@js($serviceItems), @js($inHouseBookings))">
+<div class="max-w-7xl mx-auto px-3 sm:px-6 py-4" x-data="receptionPosApp(@js($serviceItems), @js($inHouseBookings), {{ $activeSession ? 'false' : 'true' }})">
     
     {{-- Top Section: En-tête POS & Boîte Permanente de Caisse --}}
-    <div class="mb-6 grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+    <div class="mb-5 grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
         
-        {{-- Titre & Accès Rapides --}}
-        <div class="lg:col-span-7 bg-white rounded-2xl p-5 border border-secondary/15 shadow-xs flex flex-col justify-between">
+        {{-- Bannière POS & Navigation --}}
+        <div class="lg:col-span-7 bg-white rounded-2xl p-4 sm:p-5 border border-secondary/15 shadow-xs flex flex-col justify-between">
             <div class="flex items-center justify-between gap-3">
                 <div class="flex items-center gap-3">
-                    <div class="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                    <div class="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
                         <i data-lucide="store" class="w-6 h-6"></i>
                     </div>
                     <div>
-                        <h1 class="text-2xl font-heading font-bold text-primary flex items-center gap-2">
-                            Mode POS Réception
+                        <h1 class="text-xl sm:text-2xl font-heading font-bold text-primary flex items-center gap-2">
+                            Terminal POS Réception
                         </h1>
-                        <p class="text-xs text-secondary mt-0.5">Vente rapide de prestations, encaissement direct et débit sur folio</p>
+                        <p class="text-xs text-secondary mt-0.5">Vente rapide, encaissement au comptoir et débit sur folio en un seul écran</p>
                     </div>
                 </div>
 
@@ -35,7 +35,7 @@
                 <div class="flex items-center gap-3">
                     <span class="font-medium text-primary flex items-center gap-1">
                         <i data-lucide="user" class="w-3.5 h-3.5 text-secondary"></i>
-                        Réceptionniste : {{ auth()->user()->name }}
+                        Opérateur : {{ auth()->user()->name }}
                     </span>
                     <span class="text-secondary/40">•</span>
                     <span>{{ $inHouseBookings->count() }} résidents en chambre</span>
@@ -46,14 +46,14 @@
             </div>
         </div>
 
-        {{-- BOÎTE PERMANENTE DE CAISSE --}}
-        <div class="lg:col-span-5 bg-white rounded-2xl p-5 border border-secondary/15 shadow-xs flex flex-col justify-between relative overflow-hidden">
+        {{-- BOÎTE PERMANENTE DE CAISSE (Toujours visible à l'écran) --}}
+        <div class="lg:col-span-5 bg-white rounded-2xl p-4 sm:p-5 border border-secondary/15 shadow-xs flex flex-col justify-between relative overflow-hidden">
             @if($activeSession)
-                {{-- Barre d'état verte --}}
+                {{-- Ligne d'état verte si caisse ouverte --}}
                 <div class="absolute top-0 left-0 right-0 h-1.5 bg-green-500"></div>
 
                 <div>
-                    <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center justify-between mb-2.5">
                         <div class="flex items-center gap-2">
                             <span class="relative flex h-2.5 w-2.5">
                                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -62,25 +62,25 @@
                             <span class="text-xs font-bold uppercase tracking-wider text-green-700">Caisse Réception Ouverte</span>
                         </div>
                         <span class="text-[11px] font-medium text-primary/50">
-                            Depuis {{ $activeSession->opened_at ? $activeSession->opened_at->format('H:i') : '—' }}
+                            Session #{{ $activeSession->id }} • {{ $activeSession->opened_at ? $activeSession->opened_at->format('H:i') : '—' }}
                         </span>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-2 bg-accent/20 p-3 rounded-xl mb-3">
+                    <div class="grid grid-cols-2 gap-2 bg-accent/20 p-2.5 rounded-xl mb-3">
                         <div>
                             <span class="text-[10px] font-semibold text-primary/50 uppercase tracking-wider block">Fond initial</span>
-                            <span class="text-sm font-bold text-primary">{{ number_format($sessionStats['opening_amount'] / 100, 0, ',', ' ') }} FCFA</span>
+                            <span class="text-xs sm:text-sm font-bold text-primary">{{ number_format($sessionStats['opening_amount'] / 100, 0, ',', ' ') }} FCFA</span>
                         </div>
                         <div>
                             <span class="text-[10px] font-semibold text-primary/50 uppercase tracking-wider block">Solde Espèces Attendu</span>
-                            <span class="text-base font-bold text-green-700 font-heading">
+                            <span class="text-sm sm:text-base font-bold text-green-700 font-heading">
                                 {{ number_format($sessionStats['theoretical_cash'] / 100, 0, ',', ' ') }} FCFA
                             </span>
                         </div>
                     </div>
                 </div>
 
-                {{-- Boutons d'action Caisse --}}
+                {{-- Actions Caisse : Sortie et Fermeture --}}
                 <div class="flex items-center gap-2 pt-2 border-t border-secondary/10">
                     <button type="button" @click="showDisbursementModal = true" class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-colors">
                         <i data-lucide="minus-circle" class="w-3.5 h-3.5"></i>
@@ -94,16 +94,16 @@
                 </div>
 
             @else
-                {{-- Barre d'état ambre/rouge si caisse fermée --}}
+                {{-- Ligne d'état ambre si caisse fermée --}}
                 <div class="absolute top-0 left-0 right-0 h-1.5 bg-amber-500"></div>
 
                 <div class="flex flex-col justify-center h-full">
-                    <div class="flex items-center gap-2 mb-2">
+                    <div class="flex items-center gap-2 mb-1.5">
                         <span class="h-2.5 w-2.5 rounded-full bg-amber-500"></span>
                         <span class="text-xs font-bold uppercase tracking-wider text-amber-800">Caisse Réception Fermée</span>
                     </div>
-                    <p class="text-xs text-primary/70 mb-4">
-                        Vous devez ouvrir votre session de caisse avec un fond initial pour pouvoir enregistrer des encaissements immédiats (espèces, carte, etc.).
+                    <p class="text-xs text-primary/70 mb-3">
+                        Ouvrez votre caisse de réception pour démarrer les encaissements en espèces et par carte pour la journée.
                     </p>
                     <button type="button" @click="showOpenCaisseModal = true" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-green-600 hover:bg-green-700 shadow-sm transition-colors">
                         <i data-lucide="lock-open" class="w-4 h-4"></i>
@@ -114,7 +114,7 @@
         </div>
     </div>
 
-    {{-- Messages Flash & Alertes --}}
+    {{-- Messages Flash --}}
     @if(session('success'))
         <div class="mb-4 p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl flex items-center gap-2 text-sm">
             <i data-lucide="check-circle" class="w-5 h-5 text-green-600"></i>
@@ -136,13 +136,13 @@
         </div>
     @endif
 
-    {{-- FORMULAIRE PRINCIPAL POS --}}
+    {{-- FORMULAIRE PRINCIPAL DU TERMINAL POS --}}
     <form action="{{ route('reception.pos.sales.store') }}" method="POST" @submit="handleSubmit($event)">
         @csrf
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             
-            {{-- Colonne GAUCHE & CENTRE : Client, Prestations & Catalogue --}}
+            {{-- Colonne GAUCHE & CENTRE : Client/Chambre, Catalogue & Prestations --}}
             <div class="lg:col-span-7 space-y-5">
                 
                 {{-- 1. Sélection Client ou Chambre --}}
@@ -305,7 +305,7 @@
 
             {{-- Colonne DROITE : Le Panier & Règlement --}}
             <div class="lg:col-span-5">
-                <div class="bg-white rounded-2xl p-5 border border-secondary/15 shadow-sm sticky top-4">
+                <div class="bg-white rounded-2xl p-5 border border-secondary/15 shadow-sm sticky top-20">
                     
                     {{-- En-tête Panier --}}
                     <div class="flex items-center justify-between pb-3 mb-4 border-b border-secondary/10">
@@ -426,7 +426,56 @@
         </div>
     </form>
 
-    {{-- MODALE 1 : Prestation libre / Divers --}}
+    {{-- MODALE POPUP D'OUVERTURE DE CAISSE (Invitations au démarrage du service) --}}
+    <div x-show="showOpenCaisseModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-secondary/20" @click.away="showOpenCaisseModal = false">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 rounded-2xl bg-green-100 text-green-700 mx-auto flex items-center justify-center mb-3">
+                    <i data-lucide="lock-open" class="w-8 h-8"></i>
+                </div>
+                <h3 class="text-2xl font-heading font-bold text-primary">Ouverture de Caisse Réception</h3>
+                <p class="text-xs text-primary/70 mt-1">
+                    Démarrage du service du jour • Déclarez le fond de caisse initial disponible dans le tiroir pour commencer les opérations.
+                </p>
+            </div>
+
+            <form action="{{ route('bookings.cash_register.open.store') }}" method="POST">
+                @csrf
+                
+                {{-- Suggestions de fond de caisse rapide --}}
+                <div class="mb-4">
+                    <label class="block text-[11px] font-bold uppercase tracking-wider text-primary/50 mb-2">Montants usuels suggérés</label>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button type="button" @click="openingAmountInput = 0" class="py-2 text-xs font-bold rounded-xl border border-secondary/20 hover:bg-accent/30 text-primary">0 FCFA</button>
+                        <button type="button" @click="openingAmountInput = 25000" class="py-2 text-xs font-bold rounded-xl border border-secondary/20 hover:bg-accent/30 text-primary">25 000</button>
+                        <button type="button" @click="openingAmountInput = 50000" class="py-2 text-xs font-bold rounded-xl border border-secondary/20 hover:bg-accent/30 text-primary">50 000</button>
+                        <button type="button" @click="openingAmountInput = 100000" class="py-2 text-xs font-bold rounded-xl border border-secondary/20 hover:bg-accent/30 text-primary">100 000</button>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-[11px] font-bold uppercase tracking-wider text-primary/60 mb-1.5">Fond de caisse initial (FCFA) *</label>
+                    <input type="number" name="opening_amount" x-model.number="openingAmountInput" required min="0" step="100"
+                           class="w-full px-4 py-3.5 text-2xl font-black font-heading text-center border-2 border-secondary/30 rounded-2xl text-primary outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100 transition-all">
+                    <p class="text-[11px] text-primary/50 text-center mt-1.5">Comptez physiquement la monnaie présente dans le tiroir-caisse</p>
+                </div>
+
+                <div class="flex flex-col sm:flex-row items-center justify-end gap-2.5 pt-3 border-t border-secondary/10">
+                    <a href="{{ route('dashboard') }}" class="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-semibold text-primary/70 hover:text-primary transition-colors text-center">
+                        Quitter le mode POS
+                    </a>
+                    <button type="button" @click="showOpenCaisseModal = false" class="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-semibold text-primary bg-secondary/10 hover:bg-secondary/20 transition-colors">
+                        Continuer en consultation
+                    </button>
+                    <button type="submit" class="w-full sm:w-auto px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-green-600 hover:bg-green-700 shadow-md transition-all">
+                        Ouvrir la caisse et commencer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{-- MODALE 2 : Prestation libre / Divers --}}
     <div x-show="showCustomItemModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-secondary/20" @click.away="showCustomItemModal = false">
             <h3 class="text-lg font-heading font-bold text-primary mb-4 flex items-center gap-2">
@@ -463,7 +512,7 @@
         </div>
     </div>
 
-    {{-- MODALE 2 : Décaissement rapide (Sortie d'argent) --}}
+    {{-- MODALE 3 : Décaissement rapide (Sortie d'argent) --}}
     <div x-show="showDisbursementModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-secondary/20" @click.away="showDisbursementModal = false">
             <h3 class="text-lg font-heading font-bold text-primary mb-2 flex items-center gap-2">
@@ -491,33 +540,11 @@
         </div>
     </div>
 
-    {{-- MODALE 3 : Ouverture rapide de caisse --}}
-    <div x-show="showOpenCaisseModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-secondary/20" @click.away="showOpenCaisseModal = false">
-            <h3 class="text-lg font-heading font-bold text-primary mb-2 flex items-center gap-2">
-                <i data-lucide="lock-open" class="w-5 h-5 text-green-600"></i>
-                Ouverture de Caisse Réception
-            </h3>
-            <p class="text-xs text-primary/60 mb-4">Déclarez le montant des espèces présentes dans votre tiroir au début du service.</p>
-            <form action="{{ route('bookings.cash_register.open.store') }}" method="POST">
-                @csrf
-                <div class="mb-5">
-                    <label class="block text-[11px] font-bold uppercase tracking-wider text-primary/60 mb-1.5">Fond de caisse initial (FCFA) *</label>
-                    <input type="number" name="opening_amount" required min="0" step="100" value="0" class="w-full px-3.5 py-3 text-lg font-bold border border-secondary/30 rounded-xl text-primary outline-none focus:border-green-600">
-                </div>
-                <div class="flex items-center justify-end gap-2">
-                    <button type="button" @click="showOpenCaisseModal = false" class="px-4 py-2 rounded-xl text-xs font-semibold text-primary/70 hover:text-primary">Annuler</button>
-                    <button type="submit" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-green-600 hover:bg-green-700 transition-all">Démarrer le service</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
 </div>
 
 @push('scripts')
 <script>
-function receptionPosApp(serviceItems, bookings) {
+function receptionPosApp(serviceItems, bookings, shouldPromptOpenCaisse) {
     return {
         serviceItems: serviceItems,
         bookings: bookings,
@@ -531,7 +558,8 @@ function receptionPosApp(serviceItems, bookings) {
         cart: [],
         showCustomItemModal: false,
         showDisbursementModal: false,
-        showOpenCaisseModal: false,
+        showOpenCaisseModal: shouldPromptOpenCaisse,
+        openingAmountInput: 50000,
         customItem: { name: '', price: 0, category: 'other' },
 
         setClientMode(mode) {
