@@ -43,6 +43,9 @@
     </h2>
     <div class="flex flex-wrap gap-3">
         @role('manager', 'reception')
+            <a href="{{ route('reception.pos.index') }}" class="flex items-center gap-2 px-5 py-3 bg-amber-800 text-white rounded-xl text-sm font-semibold hover:bg-surface-dark transition-all shadow-sm hover:shadow-md">
+                <i data-lucide="store" class="w-4 h-4"></i> Mode POS Réception
+            </a>
             <a href="{{ route('bookings.create') }}" class="flex items-center gap-2 px-5 py-3 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-surface-dark transition-all shadow-sm hover:shadow-md">
                 <i data-lucide="plus-circle" class="w-4 h-4"></i> Nouvelle Réservation
             </a>
