@@ -49,4 +49,9 @@ class CashRegisterSession extends Model
     {
         return $this->hasMany(CashRegisterDisbursement::class);
     }
+
+    public function receptionSales()
+    {
+        return $this->hasMany(ReceptionSale::class);
+    }
 }
