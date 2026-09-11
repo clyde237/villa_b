@@ -246,6 +246,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware(['role:manager,reception', 'module.access:hebergement'])
         ->name('agenda.index');
 
+    // --- MODE POS RÉCEPTION ---
+    Route::prefix('reception/pos')->name('reception.pos.')->middleware(['role:manager,reception', 'module.access:hebergement'])->group(function () {
+        Route::get('/', [\App\Http\Controllers\Reception\ReceptionPosController::class, 'index'])->name('index');
+        Route::post('/sales', [\App\Http\Controllers\Reception\ReceptionPosController::class, 'store'])->name('sales.store');
+        Route::get('/sales/{sale}/receipt', [\App\Http\Controllers\Reception\ReceptionPosController::class, 'receipt'])->name('receipt');
+        Route::get('/history', [\App\Http\Controllers\Reception\ReceptionPosController::class, 'history'])->name('history');
+    });
+
     // --- RÉSERVATIONS ---
     Route::prefix('bookings')->name('bookings.')->middleware(['role:manager,reception', 'module.access:hebergement'])->group(function () {
         Route::get('/',                        [BookingController::class, 'index'])->name('index');

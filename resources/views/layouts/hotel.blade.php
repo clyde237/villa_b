@@ -180,6 +180,7 @@
                                 {{-- L'agenda est un écran à part entière : le calendrier
                                      des séjours n'est plus une vue de la liste. --}}
                                 <x-sidebar-link route="agenda.index" icon="calendar-days">Agenda</x-sidebar-link>
+                                <x-sidebar-link route="reception.pos.index" icon="shopping-cart">POS Réception</x-sidebar-link>
 
                                 <li>
                                     <a href="{{ route('bookings.index') }}"
@@ -644,6 +645,16 @@
                 <span class="text-xs text-primary/50">
                     {{ ucfirst(\Carbon\Carbon::now()->locale('fr')->isoFormat('ddd. D MMM')) }}
                 </span>
+
+                <form method="POST" action="{{ route('logout') }}" class="inline-flex items-center ml-1 sm:ml-2">
+                    @csrf
+                    <button type="submit"
+                            title="Se déconnecter"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 hover:text-red-800 border border-red-200 transition-all shadow-xs">
+                        <i data-lucide="log-out" class="w-3.5 h-3.5 flex-shrink-0"></i>
+                        <span class="hidden sm:inline">Déconnexion</span>
+                    </button>
+                </form>
             </div>
         </header>
 
